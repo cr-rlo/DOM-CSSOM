@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="ko" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>[BASE] 산만한 가격표 – 특이성/inline/저대비 문제</title>
+  <style>
+    :root { --color-: }
+
+    /* 전역 토큰이 없음 → 전역 규칙 충돌 유발용 */
+    html{font-size:14px}
+    body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Noto Sans,sans-serif;background:#0b1220;color:#cfd3dc}
+    html[data-theme="light"] body{background:#ffffff;color:#0b1220}
+
+    /* 전역 버튼 – 파랑 강제 + !important (문제의 씨앗) */
+    .btn{background:#0a8fff !important; color:white !important; border:0; padding:10px 14px; border-radius:10px; cursor:pointer}
+
+    /* 헤더 (대비 낮음) */
+    .header{position:sticky;top:0;background:#0b1220aa;color:#95a0b3;padding:10px 14px;border-bottom:1px solid #1d2635}
+    html[data-theme="light"] .header{background:#ffffffcc;color:#4d5a6e;border-bottom:1px solid #e6e8ef}
+    .header .right{float:right}
+    .header .btn-ghost{background:transparent;color:inherit;border:1px solid #1d2635;padding:8px 12px;border-radius:10px}
+    html[data-theme="light"] .header .btn-ghost{border-color:#e6e8ef}
+
+    /* 가격표 래퍼 – 구식 레이아웃 */
+    .pricing{max-width:1100px;margin:40px auto 60px}
+    .row{font-size:0}
+    .plan{display:inline-block;vertical-align:top;width:32%;margin:0 1%;font-size:1rem;background:#111a2a;border:1px solid #1f2937;border-radius:12px;overflow:hidden;position:relative}
+    html[data-theme="light"] .plan{background:#f8fafc;border-color:#e6e8ef}
+
+    /* 카드 타이포 – 혼용, 저대비 */
+    .plan h3{margin:16px 16px 6px 16px; font-size:18px; color:#9fb0c7}
+    .plan .price{margin:0 16px 8px 16px; font-size:28px; color:#a5b4c8}
+    .plan .desc{margin:0 16px 12px 16px; color:#8a94a6; line-height:1.3}
+    .plan .features{margin:12px 16px 16px 16px; color:#9aa4b8}
+    .plan .features li{margin:6px 0}
+
+    /* CTA – 전역 .btn 규칙에 종속 → 파랑으로 강제 */
+    .plan .cta{margin:16px}
+    .plan .cta .btn{width:100%}
+
+    /* Pro 카드만 inline style과 id로 어지럽게 덮어쓰기 */
+    #pro{border-color:#3b82f6}
+    #pro h3{color:#b6cfff !important}       /* 강제 */
+    #pro .price{font-size:30px}
+    /* inline style이 아래 본문에 들어감 */
+
+    /* 할인 배지 – 위치 기준 잘못(문제 유도) */
+    .badge{position:absolute; top:-10px; right:-6px; background:#f87171; color:white; padding:4px 10px; border-radius:999px; font-size:12px}
+
+    /* 라이트에서 대비 낮음 유지하려고 일부러 */
+    html[data-theme="light"] .plan h3{color:#7b8aa1}
+    html[data-theme="light"] .plan .desc{color:#8ea0b5}
+  </style>
+</head>
+<body>
+  <div class="header">
+    <strong>봄맞이 프로모션</strong>
+    <span class="right">
+      <button id="theme" class="btn-ghost">🌓 테마</button>
+    </span>
+  </div>
+
+  <main class="pricing">
+    <div class="row">
+      <section class="plan" id="basic">
+        <span class="badge">-20%</span>
+        <h3>Basic</h3>
+        <p class="price">₩9,900</p>
+        <p class="desc">개인/취미용. 소규모 프로젝트에 적합.</p>
+        <ul class="features">
+          <li>월 1GB 트래픽</li>
+          <li>커뮤니티 지원</li>
+        </ul>
+        <div class="cta">
+          <button class="btn">지금 시작</button>
+        </div>
+      </section>
+
+      <section class="plan" id="pro" style="background:#0c1528; padding-bottom:26px">
+        <span class="badge" style="right:-12px; top:-14px">인기</span>
+        <h3>Pro</h3>
+        <p class="price">₩19,900</p>
+        <p class="desc" style="line-height:1.1">팀 협업, 대시보드 제작에 추천.</p>
+        <ul class="features">
+          <li>월 10GB 트래픽</li>
+          <li>이메일 지원</li>
+          <li>애널리틱스</li>
+        </ul>
+        <div class="cta">
+          <button class="btn" style="border-radius:6px">업그레이드</button>
+        </div>
+      </section>
+
+      <section class="plan" id="business">
+        <span class="badge">-30%</span>
+        <h3>Business</h3>
+        <p class="price">₩49,900</p>
+        <p class="desc">기업/고트래픽 서비스용. SLA 포함.</p>
+        <ul class="features">
+          <li>무제한 트래픽</li>
+          <li>우선 지원</li>
+          <li>전담 CSM</li>
+        </ul>
+        <div class="cta">
+          <button class="btn">상담하기</button>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <script>
+    const root=document.documentElement;
+    const saved=localStorage.getItem('theme')||'dark';
+    root.setAttribute('data-theme',saved);
+    document.getElementById('theme').addEventListener('click',()=>{
+      const next=root.getAttribute('data-theme')==='dark'?'light':'dark';
+      root.setAttribute('data-theme',next); localStorage.setItem('theme',next);
+    });
+  </script>
+</body>
+</html>

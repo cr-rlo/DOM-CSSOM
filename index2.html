@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Document</title>
+</head>
+<body>
+  <div class="box"></div>
+  <button id = "btn">Change Color</button>
+
+  <style>
+    .box {
+      width:200px;
+      height: 200px;
+      background: coral;
+      transition: background 0.5s ease;
+    }
+    /* 크기 배경색 CSS 트랜지션 적용
+    이 과정에서 브라우저는 스타일 재 계산, 레이아웃 재배치, 픽셀 다시 그리기 수행 */
+  </style>
+
+  <script>
+    const box = document.querySelector(".box");
+    document.getElementById("btn").addEventListener("click", ()=>{
+      box.style.background = box.style.background === "skyblue" ? "coral" : "skyblue";
+    });
+  </script>
+</body>
+</html>

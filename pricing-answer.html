@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="ko" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>[ANSWER] 정돈된 가격표 – 토큰/스코프/접근성</title>
+  <style>
+    /* ===== Design Tokens ===== */
+    :root{
+      --space-1: 4px; --space-2: 8px; --space-3: 12px; --space-4: 16px; --space-5: 20px; --space-6: 24px; --radius:14px;
+      --font-body: 16px; --lh-body: 1.6; --font-h3: 20px; --font-price: 32px;
+
+      --bg: #0b1220; --elev:#111a2a; --text:#e6e9ef; --muted:#a7b1c2; --border:#203047;
+      --brand:#60a5fa; --brand-strong:#3b82f6; --danger:#f87171; --ok:#22c55e;
+
+      --cta-fg:#0b1220; --cta-bg:#60a5fa; --cta-bg-strong:#3b82f6;
+
+      --card-shadow: 0 6px 24px rgba(0,0,0,.35);
+      --ribbon-bg: linear-gradient(135deg, var(--ok), #7dd3fc);
+    }
+    html[data-theme="light"]{
+      --bg:#ffffff; --elev:#f8fafc; --text:#0b1220; --muted:#49566b; --border:#e6e8ef;
+      --brand:#2563eb; --brand-strong:#1d4ed8; --cta-fg:#ffffff; --cta-bg:#2563eb; --cta-bg-strong:#1d4ed8;
+      --card-shadow: 0 6px 20px rgba(17,24,39,.08);
+      --ribbon-bg: linear-gradient(135deg, #10b981, #60a5fa);
+    }
+
+    /* ===== Base ===== */
+    html{font-size:16px}
+    *{box-sizing:border-box}
+    /* 페이지의 모든 요소 선택 -> */
+    body{margin:0;background:var(--bg);color:var(--text);font: var(--font-body)/var(--lh-body) system-ui,-apple-system,Segoe UI,Roboto,Noto Sans,sans-serif}
+
+    /* ===== Header ===== */
+    .header{
+      position:sticky;
+      top:0;
+      background:color-mix(in oklab, var(--bg), white 5%);backdrop-filter:saturate(1.2) blur(6px);
+      border-bottom:1px solid var(--border); 
+      padding: var(--space-4) var(--space-5); 
+      display:flex;
+      justify-content:space-between;
+      align-items:center
+    }
+    .btn-ghost{background:transparent;color:var(--text);border:1px solid var(--border);padding: var(--space-3) var(--space-4);border-radius:10px;cursor:pointer}
+
+    /* ===== Pricing Layout (모듈 스코프: .pricing) ===== */
+    .pricing{max-width:1100px;margin:40px auto 60px; padding: 0 var(--space-5)}
+    .pricing__grid{display:grid;grid-template-columns: repeat(3, 1fr); gap: var(--space-5)}
+    @media (max-width:960px){ .pricing__grid{grid-template-columns:1fr} }
+
+    .plan{background:var(--elev); border:1px solid var(--border); border-radius: var(--radius);
+      padding: var(--space-6); box-shadow: var(--card-shadow); position:relative; overflow:hidden}
+    .plan__head{margin-bottom: var(--space-4)}
+    .plan__name{margin:0 0 var(--space-2); font-size: var(--font-h3); color: color-mix(in oklab, var(--text), var(--brand) 20%)}
+    .plan__price{margin:0; font-size: var(--font-price); font-weight:700; letter-spacing:-0.02em}
+    .plan__desc{margin: var(--space-3) 0 var(--space-4); color: var(--muted); line-height: 1.7}
+
+    .plan__features{margin:0 0 var(--space-5); padding:0; list-style:none; color: color-mix(in oklab, var(--muted), var(--text) 25%)}
+    .plan__features li{display:flex; gap: var(--space-3); align-items:flex-start; margin: var(--space-2) 0}
+    .plan__features li::before{content:"✔"; color: var(--ok); margin-top: 2px}
+
+    .plan__cta .btn{width:100%; border-radius:12px; padding: var(--space-4); border:0; 
+      color: var(--cta-fg); background: var(--cta-bg); cursor:pointer}
+    .plan__cta .btn:hover{background: var(--cta-bg-strong)}
+
+    /* Pro 강조 – 특이성 남발 없이 상태 클래스로 */
+    .plan--pro{outline: 2px solid color-mix(in oklab, var(--brand-strong), var(--text) 20%); outline-offset: 2px}
+    .plan--pro .plan__name{color: var(--brand)}
+    .plan--pro .ribbon{position:absolute; top:12px; right:-36px; transform:rotate(35deg);
+      background: var(--ribbon-bg); color: #fff; padding: 6px 56px; font-weight:700; text-shadow: 0 1px 0 rgba(0,0,0,.25)}
+
+    /* 배지(할인) – 컨테이너 기준 앵커 고정 */
+    .badge{position:absolute; top:12px; left:12px; background: var(--danger); color:white;
+      padding: 4px 10px; border-radius:999px; font-size:12px; box-shadow: 0 2px 8px rgba(0,0,0,.25)}
+  </style>
+</head>
+<body>
+  <header class="header">
+    <strong>봄맞이 프로모션</strong>
+    <button id="theme" class="btn-ghost">🌓 테마</button>
+  </header>
+
+  <main class="pricing">
+    <section class="pricing__grid">
+      <!-- Basic -->
+      <article class="plan plan--basic">
+        <span class="badge">-20%</span>
+        <div class="plan__head">
+          <h3 class="plan__name">Basic</h3>
+          <p class="plan__price">₩9,900</p>
+          <p class="plan__desc">개인/취미용 – 소규모 프로젝트를 가볍게 시작하세요.</p>
+        </div>
+        <ul class="plan__features">
+          <li>월 1GB 트래픽</li>
+          <li>커뮤니티 지원</li>
+        </ul>
+        <div class="plan__cta">
+          <button class="btn">지금 시작</button>
+        </div>
+      </article>
+
+      <!-- Pro (강조) -->
+      <article class="plan plan--pro">
+        <div class="ribbon">인기</div>
+        <div class="plan__head">
+          <h3 class="plan__name">Pro</h3>
+          <p class="plan__price">₩19,900</p>
+          <p class="plan__desc">팀 협업/대시보드 제작 – 필요 기능을 안정적으로.</p>
+        </div>
+        <ul class="plan__features">
+          <li>월 10GB 트래픽</li>
+          <li>이메일 지원</li>
+          <li>애널리틱스</li>
+        </ul>
+        <div class="plan__cta">
+          <button class="btn">업그레이드</button>
+        </div>
+      </article>
+
+      <!-- Business -->
+      <article class="plan plan--biz">
+        <span class="badge">-30%</span>
+        <div class="plan__head">
+          <h3 class="plan__name">Business</h3>
+          <p class="plan__price">₩49,900</p>
+          <p class="plan__desc">기업/고트래픽 – SLA/전담 지원 포함, 확장성 극대화.</p>
+        </div>
+        <ul class="plan__features">
+          <li>무제한 트래픽</li>
+          <li>우선 지원</li>
+          <li>전담 CSM</li>
+        </ul>
+        <div class="plan__cta">
+          <button class="btn">상담하기</button>
+        </div>
+      </article>
+    </section>
+  </main>
+
+  <script>
+    const root=document.documentElement;
+    const saved=localStorage.getItem('theme')||'dark';
+    root.setAttribute('data-theme',saved);
+    document.getElementById('theme').addEventListener('click',()=>{
+      const next=root.getAttribute('data-theme')==='dark'?'light':'dark';
+      root.setAttribute('data-theme',next); localStorage.setItem('theme',next);
+    });
+  </script>
+</body>
+</html>
