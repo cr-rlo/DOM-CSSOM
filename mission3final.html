@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <title>CLS 미션 - Fixed (Hardened)</title>
+
+  <!-- Google Fonts with display=swap -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <!-- 실제로 폰트 파일이 있는 서버와 미리 연결 -->
+  <link href="https://fonts.googleapis.com/css2?family=Roboto&display=swap" rel="stylesheet">
+  <!-- 진짜 폰트를 지정하는 부분 -->
+  <style>
+    :root { --ad-height: 120px; }
+    /* HTML 문서의 최상위 요소
+    --로 시작하는 것은 CSS 변수
+    120px을 변수에 저장해서 여러 곳에 편하게 사용하기 위함 */
+
+    body { font-family: 'Roboto', system-ui, -apple-system, Segoe UI, sans-serif; margin: 0; padding: 24px; line-height: 1.5; }
+
+    .hud { position: fixed; top: 12px; right: 12px; background: #111; color: #fff; padding: 10px 12px; border-radius: 8px; font-size: 14px; z-index: 9999; }
+
+    /* 상단 광고: 초기부터 자리 확보 */
+    .ad-wrap {
+      width: 100%; height: var(--ad-height);
+      background: #fff6bf; display: flex; align-items: center; justify-content: center;
+      border: 2px dashed #222; margin: -24px -24px 24px;
+    }
+    .ad-content { opacity: 0; transition: opacity .3s ease; }
+    .ad-content.ready { opacity: 1; }
+    /* opacity 값이 바뀔 때 0.3초 동안 자연스럽게 변화시켜라
+       opacity 값은 처음에 0으로 투명하게 보이다가 준비되면 1로 바뀌어 내용 표시 */
+
+    /* 이미지 공간 예약 */
+    .hero-wrap { width: 100%; }
+    /* 이미지를 감싸는 부모 영역
+    이미지 영역을 관리하고 skeleton과 실제 이미지를 같은 위치에 배치하기 위한 컨테이너*/
+    .hero-skeleton {
+      /* 이미지가 로딩 중일 때 보여지는 화면 */
+      width: 100%; 
+      aspect-ratio: 4 / 3; 
+      /* 가로와 세로의 비율을 4:3으로 유지하라 */
+      background: #e9e9e9; 
+      border-radius: 8px;
+      display: flex; 
+      align-items: center; justify-content: center; 
+      color: #666; 
+      font-size: 14px;
+    }
+    #hero { 
+      width: 100%; 
+      /* 부모 너비만큼 확대 */
+      height: auto; 
+      /* 이미지 비율 유지 */ 
+      display: none; 
+      /* 처음에는 이미지를 숨기고 skeleton 표시 */
+      border-radius: 8px; 
+    }
+
+    .card { margin-top: 16px; padding: 12px; background: #f3f3f3; border-radius: 8px; }
+
+    /* transform 애니메이션 */
+    .banner-box { position: relative; height: 60px; margin-top: 24px; }
+    /* banner-box로 자리 확보 */
+    .banner {
+      position: absolute; left: 0; top: 0;
+      /* position absolute는 이 요소를 일반적인 흐름에서 빼고 원하는 위치에 배치하겠다는 의미
+      배너가 후에 움직일 것이기 때문에 배너가 이동하며 다른 요소의 배치를 밀지 않게 하기 위해서  */
+      width: 120px; height: 40px; background: #4c6ef5; color: #fff;
+      display: flex; align-items: center; justify-content: center; border-radius: 8px;
+      /*
+       display flex는 내부 요소 배치를 쉽게 하기 위한 기능
+       내부 정렬 기능 사용 가능
+      */
+      transition: transform 400ms ease; will-change: transform;
+      /* 
+      변화 효과 => transform 값이 변경될 때 400ms 동안 부드럽게 움직여라
+      will-change는 브라우저에게 미리 알려주는 힌트로 브라우저가 최적화를 할 수 있음
+       */
+    }
+    /* 
+      position: absolute; 를 사용하면 .banner은 문서 흐름에서 빠짐
+      즉 자식은 따로 떠있는것처럼 여겨져 부모가 자식 높이를 모르게 됨
+      => 부모 요소인 .banner-box에 height: 60px으로 직접 높이를 줌
+     */
+    .banner.move { transform: translateX(260px); }
+  </style>
+</head>
+<body>
+  <div class="hud">CLS: <span id="cls">0.000</span></div>
+
+  <!-- 광고 컨테이너 (초기부터 자리 확보) -->
+  <div class="ad-wrap">
+    <div class="ad-content" id="ad-content">로딩 중…</div>
+  </div>
+
+  <h1>레이아웃 셰프트 개선 페이지</h1>
+  <p>이미지, 광고, 애니메이션, 폰트 문제를 개선했습니다.</p>
+
+  <div class="hero-wrap">
+    <!-- skeleton 안에 안내 문구도 배치 (로드 지연 시 사용자 피드백) -->
+    <div class="hero-skeleton" id="hero-skeleton">이미지 로딩 중…</div>
+    <!-- width/height로 공간 명시 + referrerpolicy로 리퍼러 이슈 회피 -->
+    <img
+      id="hero"
+      alt="큰 이미지"
+      width="1200"
+      height="900"
+      referrerpolicy="no-referrer"
+      decoding="async">
+    <!-- 
+      이미지의 원본 크기를 브라우저에게 미리 알려주면 브라우저가 이미지 로딩 전에 미리 4:3 비율의 공간을 확보하므로 CLS를 줄일 수 있음
+      referrerpolicy="no-referrer"는 이미지를 요청할 때 이전 페이지 주소를 보내지 않겠다는 뜻
+      decoding="async는 디코딩 방식 지정 -> 이미지 디코딩 때문에 다른 화면 렌더링을 막지 말라는 의미
+      -->
+  </div>
+
+  <div class="card" id="card1">이미지가 도착하기 전에도 공간이 예약되어 있어 아래 요소가 밀리지 않습니다.</div>
+
+  <div class="banner-box">
+    <div class="banner" id="banner">BUY</div>
+  </div>
+
+  <script>
+    // CLS HUD
+    (function measureCLS() {
+      let clsValue = 0;
+      const clsEl = document.getElementById("cls");
+      if ("PerformanceObserver" in window) {
+        const po = new PerformanceObserver((list) => {
+          for (const entry of list.getEntries()) {
+            if (!entry.hadRecentInput) {
+              clsValue += entry.value;
+              clsEl.textContent = clsValue.toFixed(3);
+            }
+          }
+        });
+        try { po.observe({ type: "layout-shift", buffered: true }); } catch (e) {}
+      }
+    })();
+
+    const hero = document.getElementById('hero');
+    const skeleton = document.getElementById('hero-skeleton');
+    const banner = document.getElementById('banner');
+    const adContent = document.getElementById('ad-content');
+
+    // 1차 기본 이미지 URL (Wikimedia)
+    const IMG_PRIMARY = "https://upload.wikimedia.org/wikipedia/commons/3/3f/Fronalpstock_big.jpg";
+    // 2차 대체 URL (Picsum: 4:3 비율)
+    const IMG_FALLBACK = "https://picsum.photos/1200/900";
+
+    // 이미지 로드 성공 시 skeleton 교체
+    function showImage() {
+      hero.style.display = 'block';
+      skeleton.style.display = 'none';
+    }
+
+    // 이미지 로드 실패 시 대체 소스 시도
+    function handleImgError() {
+      if (hero.dataset.triedFallback === "1") {
+        // 최종 실패: skeleton에 안내 표시 유지
+        skeleton.textContent = "이미지를 불러오지 못했습니다. 네트워크 상태를 확인하세요.";
+        return;
+      }
+      hero.dataset.triedFallback = "1";
+      // 대체 이미지 시도를 했음
+      hero.src = IMG_FALLBACK;
+      // 이미지 주소를 대체 이미지로 변경
+    }
+
+    // 5초 내 로드/에러 콜백이 없으면 안내로 전환(네트워크 지연 대비)
+    const failSafeTimer = setTimeout(() => {
+      if (hero.style.display === 'none') {
+        // 만약 이미지가 숨겨진 상태라면
+        skeleton.textContent = "네트워크가 느립니다. 잠시 후 다시 시도합니다…";
+        // 로딩 박스 안의 글자를 바꾸기 
+        // 5초를 후에 이미지가 아직 안떴다면 안내문구 표시
+      }
+    }, 5000);
+
+    // 이미지 로딩 시작 (자리 예약은 이미 되어 있음)
+    setTimeout(() => {
+      hero.onload = () => { clearTimeout(failSafeTimer); showImage(); };
+      // 이미지가 성공적으로 로드되었다면 네트워크 지연 안내 타이머를 삭제
+      hero.onerror = handleImgError;
+      // 이미지가 실패하면 에러 함수 실행
+      hero.src = IMG_PRIMARY;
+      // 마지막으로 이미지 주소 설정
+    }, 600);
+
+    // 광고 내용 교체 (컨테이너는 이미 자리 확보 → 레이아웃 영향 없음)
+    setTimeout(() => {
+      adContent.textContent = "광고 영역 – 예약된 자리 안에서 내용 교체";
+      adContent.classList.add('ready');
+    }, 1000);
+
+    // transform 애니메이션 (레이아웃 비침범)
+    setTimeout(() => {
+      banner.classList.add('move');
+    }, 1400);
+  </script>
+</body>
+</html>
