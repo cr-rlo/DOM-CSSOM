@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <title>최적화된 대시보드 (Answer)</title>
+  <!-- 폰트 최적화: preconnect + swap으로 FOIT 방지 -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    :root{
+      --bg:#f6f7fb; --panel:#ffffff; --ink:#0f172a; --muted:#6b7280; --accent:#2563eb; --good:#059669; --bad:#dc2626; --border:#e5e7eb;
+    }
+    *{box-sizing:border-box} body{margin:0;font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--ink)}
+    header{position:sticky;top:0;z-index:10;background:#0f172a;color:#fff;padding:16px 20px;font-weight:700;letter-spacing:.2px}
+    .layout{display:flex;min-height:100dvh}
+    nav{width:220px;background:#111827;color:#cbd5e1;padding:16px}
+    nav h3{font-size:14px;margin:8px 0 12px;color:#9ca3af}
+    nav a{display:block;color:inherit;text-decoration:none;padding:10px 8px;border-radius:8px}
+    nav a:hover{background:#1f2937}
+    main{flex:1;padding:20px}
+
+    /* 레이아웃 최적화: Grid 사용 → 계산 안정화 + 균등 갭 */
+    .cards{
+      display:grid;
+      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+      gap: 12px;
+    }
+
+    .card{
+      height:140px; padding:16px;
+      background:var(--panel); border:1px solid var(--border); border-radius:14px;
+      /* 그림자 '값'은 고정: hover에서 변하지 않음 → 그림자 애니메이션 금지 */
+      box-shadow:0 8px 16px rgba(0,0,0,.10);
+      transition: transform .25s ease;
+      /* 복잡한 자식 레이아웃/페인트가 많은 카드의 캡슐화 */
+      contain: content;
+    }
+    /* hover는 transform만 변경 → 합성(Composite) 경로 확보 */
+    .card:hover{ transform: translateY(-2px) scale(1.02); }
+
+    .kpi-title{font-size:13px;color:var(--muted);margin:0 0 8px}
+    .kpi-value{font-size:28px;font-weight:700;margin:0 0 6px}
+    .kpi-delta{font-size:12px}
+    .kpi-delta.good{color:var(--good)} .kpi-delta.bad{color:var(--bad)}
+
+    /* 미니 스파크라인: 불필요한 filter/opacity 제거 */
+    .spark{
+      height:36px; border-radius:8px; margin-top:10px;
+      background:
+        linear-gradient(0deg, rgba(0,0,0,.04), rgba(0,0,0,0)),
+        linear-gradient(90deg,#c7d2fe 10%, #60a5fa 40%, #22c55e 70%, #fde047 90%);
+    }
+
+    .panel{background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:16px;margin-top:20px}
+    /* 긴 컨텐츠는 초기 비용 절감: fold 밖이면 렌더 지연 */
+    .panel[data-lazy]{content-visibility:auto;contain-intrinsic-size:600px 400px;}
+
+    /* 아이콘 최적화: 스프라이트 (데모 좌표) */
+    .icon{
+      width:18px;height:18px;margin-right:6px;display:inline-block;
+      background:url('sprite-icons.png') no-repeat 0 0 / 72px 18px;
+    }
+
+    table{width:100%;border-collapse:collapse}
+    th,td{border-bottom:1px solid var(--border);padding:10px 6px;text-align:left}
+    th{font-size:12px;color:var(--muted);font-weight:600}
+
+    /* 색상 의존 최소화: 화살표 기호 + 스크린리더 텍스트 */
+    .delta-icon-up::before{content:"▲ ";color:var(--good)}
+    .delta-icon-down::before{content:"▼ ";color:var(--bad)}
+
+    /* 스크린리더 전용 숨김 텍스트 */
+    .sr-only{
+      position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;
+      clip:rect(0,0,0,0);white-space:nowrap;border:0;
+    }
+
+    @media (prefers-reduced-motion: reduce){
+      .card{transition:none}
+      .card:hover{transform:none}
+    }
+  </style>
+</head>
+<body>
+  <header>📊 경영 대시보드</header>
+  <div class="layout">
+    <nav>
+      <h3>메뉴</h3>
+      <a href="#">🏠 홈</a>
+      <a href="#">📈 매출 분석</a>
+      <a href="#">👥 사용자</a>
+      <a href="#">🧾 주문</a>
+      <a href="#">⚙️ 설정</a>
+    </nav>
+    <main>
+      <section class="cards" id="cards">
+        <!-- KPI 카드 (실제 항목 그대로 유지) -->
+        <article class="card" aria-label="Revenue today">
+          <p class="kpi-title">Revenue (오늘)</p>
+          <p class="kpi-value">₩48,210,000</p>
+          <p class="kpi-delta good">
+            <span class="icon" aria-hidden="true"></span>
+            <span class="delta-icon-up" aria-hidden="true"></span>
+            <span class="sr-only">상승 </span>+12.4% vs 어제
+          </p>
+          <div class="spark" role="img" aria-label="수익 추이 미니 그래프"></div>
+        </article>
+
+        <article class="card" aria-label="Conversion Rate">
+          <p class="kpi-title">Conversion Rate</p>
+          <p class="kpi-value">3.28%</p>
+          <p class="kpi-delta bad">
+            <span class="icon" aria-hidden="true"></span>
+            <span class="delta-icon-down" aria-hidden="true"></span>
+            <span class="sr-only">하락 </span>-0.4pp vs 지난주
+          </p>
+          <div class="spark" role="img" aria-label="전환율 추이 미니 그래프"></div>
+        </article>
+
+        <article class="card" aria-label="Active Users">
+          <p class="kpi-title">Active Users</p>
+          <p class="kpi-value">18,442</p>
+          <p class="kpi-delta good">
+            <span class="icon" aria-hidden="true"></span>
+            <span class="delta-icon-up" aria-hidden="true"></span>
+            <span class="sr-only">상승 </span>+1,203 신규
+          </p>
+          <div class="spark" role="img" aria-label="활성 사용자 추이 미니 그래프"></div>
+        </article>
+
+        <article class="card" aria-label="Error Rate">
+          <p class="kpi-title">Error Rate</p>
+          <p class="kpi-value">0.72%</p>
+          <p class="kpi-delta bad">
+            <span class="icon" aria-hidden="true"></span>
+            <span class="delta-icon-down" aria-hidden="true"></span>
+            <span class="sr-only">악화 </span>+0.12pp 스파이크
+          </p>
+          <div class="spark" role="img" aria-label="에러율 추이 미니 그래프"></div>
+        </article>
+
+        <script>
+          // 동일 카드 60개 추가(시나리오 유지). 개선안에서는 Fragment로 합치기 → 중간 레이아웃/페인트 최소화
+          const area = document.currentScript.parentElement;
+          const frag = document.createDocumentFragment();
+          for (let i = 0; i < 60; i++) {
+            frag.appendChild(area.children[0].cloneNode(true));
+          }
+          area.appendChild(frag);
+        </script>
+      </section>
+
+      <section class="panel" data-lazy>
+        <h3 style="margin:0 0 12px">🧾 최근 주문</h3>
+        <table>
+          <thead><tr><th>주문번호</th><th>고객</th><th>금액</th><th>상태</th></tr></thead>
+        <tbody>
+          <tr><td>#10291</td><td>Kim Min</td><td>₩129,000</td><td>배송중</td></tr>
+          <tr><td>#10290</td><td>Lee Ara</td><td>₩59,000</td><td>결제완료</td></tr>
+          <tr><td>#10289</td><td>Park J</td><td>₩780,000</td><td>반품요청</td></tr>
+          <tr><td>#10288</td><td>Yun H</td><td>₩44,000</td><td>결제완료</td></tr>
+        </tbody>
+        </table>
+      </section>
+    </main>
+  </div>
+</body>
+</html>

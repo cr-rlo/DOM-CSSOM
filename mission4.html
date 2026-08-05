@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <title>느린 대시보드 (Base)</title>
+  <!-- 의도적 FOIT: display=block -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?
+  family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <style>
+    :root{
+      --bg:#f6f7fb; --panel:#ffffff; --ink:#0f172a; --muted:#6b7280; --accent:#2563eb; --good:#059669; --bad:#dc2626; --border:#e5e7eb;
+    }
+    *{box-sizing:border-box} body{margin:0;font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--ink)}
+    header{position:sticky;top:0;z-index:10;background:#0f172a;color:#fff;padding:16px 20px;font-weight:700;letter-spacing:.2px}
+    .layout{display:flex;min-height:100dvh}
+    nav{width:220px;background:#111827;color:#cbd5e1;padding:16px}
+    nav h3{font-size:14px;margin:8px 0 12px;color:#9ca3af}
+    nav a{display:block;color:inherit;text-decoration:none;padding:10px 8px;border-radius:8px}
+    nav a:hover{background:#1f2937}
+
+    main{flex:1;padding:20px}
+
+    /* 병목1: 많은 inline-block 카드 → Reflow 비용 증가 */
+    cards {
+      width: 100%;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 20px; 
+      /* 
+      margin 대신 gap 사용으로 Reflow 최소화
+      마진 대신 부모의 gap이 알아서 간격을 띄워줌
+      display: flex + flex-wrap: wrap로 카드들을 한 줄에 여러 개 배치하고, 화면 크기에 따라 자동으로 줄바꿈되도록 함
+      */
+      
+    }
+    .card{
+      width:260px; height:140px; padding:16px;
+      background:var(--panel); 
+      border:1px solid var(--border); 
+      border-radius:14px;
+      
+      box-shadow:0 8px 16px rgba(0,0,0,0.10);
+      transition: transform 0.3s ease;
+      contain: content;
+      /* 
+      그림자에 애니메이션을 주면 cpu에 부담이 많이 가기 때문에 그림자 고정
+      contain:content를 통해서 브라우저의 불필요한 연산을 막을 수 있음
+      카드가 움직이든 바뀌든 바깥쪽은 검사하지 말라는 선언
+      */
+    }
+    /* 병목3: hover시 opacity 변화 → 매 프레임 Paint */
+    .card:hover{ transform: translateY(-2px) scale(1.02);}
+
+    .kpi-title{font-size:13px;color:var(--muted);margin:0 0 8px}
+    .kpi-value{font-size:28px;font-weight:700;margin:0 0 6px}
+    .kpi-delta{font-size:12px}
+    .kpi-delta.good{color:var(--good)} .kpi-delta.bad{color:var(--bad)}
+
+    /* 미니 스파크라인(의도적으로 Paint 부담) */
+    .spark{
+      height:36px; 
+      border-radius:8px; 
+      margin-top:10px;
+      background:
+        linear-gradient(0deg, rgba(0,0,0,.05), rgba(0,0,0,0)) ,
+        /* 잦은 repaint를 유도하기 위해 filter/opacity를 함께 사용 */
+        linear-gradient(90deg,#c7d2fe 10%, #60a5fa 40%, #22c55e 70%, #fde047 90%);
+    }
+
+    .panel{background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:16px;margin-top:20px}
+
+    .panel[data-lazy] {
+      content-visibility: auto;
+      contain-intrinsic-size: 600px 400px;
+    }
+    /* 
+      data-lazy 속성을 가진 패널은 화면에 보이지 않으면 렌더링을 지연시키고, 화면에 보이면 렌더링을 시작
+      content-visibility: auto;를 통해서 화면 밖이면 그리기를 중단
+      contain-intrinsic-size: 600px 400px; (공간 미리 확보하기)
+      auto는 화면 밖이면 그리기를 중단하고, contain-intrinsic-size는 화면 밖이더라도 공간을 확보해주기 때문에 CLS를 줄일 수 있음
+    */
+
+    
+    .icon {
+  width: 18px; height: 18px; margin-right: 6px; display: inline-block;
+  background: url('sprite-icons.png') no-repeat 0 0 / 72px 18px;
+    }
+    /* 
+      아이콘 스프라이트를 사용하여 여러 아이콘을 하나의 이미지로 합쳐서 불러오기 때문에 HTTP 요청 수를 줄일 수 있음
+      background: url('sprite-icons.png') no-repeat 0 0 / 72px 18px; 
+      - url('sprite-icons.png'): 스프라이트 이미지 경로
+      - no-repeat: 이미지를 반복하지 않음
+      - 0 0: 스프라이트 이미지에서 보여줄 위치 (좌상단)
+      - / 72px 18px: 스프라이트 이미지의 전체 크기 (너비 72px, 높이 18px) 
+      다른 아이콘을 보여주고 싶을 때는 이 시작 좌표(-18px 0, -36px 0 등)만 살짝 바꿔주면 아주 가볍게 아이콘을 바꿀 수 있음
+    */
+
+
+    table{width:100%;border-collapse:collapse}
+    th,td{border-bottom:1px solid var(--border);padding:10px 6px;text-align:left}
+    th{font-size:12px;color:var(--muted);font-weight:600}
+
+
+
+    /* 색상 의존 최소화: 화살표 기호 + 스크린리더 텍스트 */
+    .delta-icon-up::before{content:"▲ ";color:var(--good)}
+    .delta-icon-down::before{content:"▼ ";color:var(--bad)}
+    /*
+      화살표 기호를 사용하여 색상에 의존하지 않고 상승/하락을 표시
+      스크린리더가 읽을 수 있도록 텍스트를 추가
+    */
+
+    /* 스크린리더 전용 숨김 텍스트 */
+    .sr-only{
+      position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;
+      clip:rect(0,0,0,0);white-space:nowrap;border:0;
+      /* 
+        스크린리더 전용 숨김 텍스트를 만들기 위해 사용
+        화면에는 보이지 않지만 스크린리더가 읽을 수 있도록 함
+       */
+    }
+
+    @media (prefers-reduced-motion: reduce){
+      .card{transition:none}
+      .card:hover{transform:none}
+    }
+    /* 
+      사용자가 '움직임 줄이기' 설정을 켰을 때, 카드의 transition과 hover 효과를 제거하여 시각적 부담을 줄임
+    */
+
+
+    
+  </style>
+</head>
+<body>
+  <header>📊 경영 대시보드</header>
+  <div class="layout">
+    <nav>
+      <h3>메뉴</h3>
+      <a href="#">🏠 홈</a>
+      <a href="#">📈 매출 분석</a>
+      <a href="#">👥 사용자</a>
+      <a href="#">🧾 주문</a>
+      <a href="#">⚙️ 설정</a>
+    </nav>
+    <main>
+      <section class="cards" id="cards">
+        <article class="card" aria-label="Revenue today">
+          <!-- div가 아닌 article을 사용해서 이 안의 내용이 하나의 독립적이고 완전한 정보 덩어리임을 알려줌
+          aria-label을 통해 스크린리더에게 카드의 의미를 명확히 전달
+          -->
+          <p class="kpi-title">Revenue (오늘)</p>
+          <p class="kpi-value">₩48,210,000</p>
+          <p class="kpi-delta good">
+            <!-- kpi delta는 증감 수치를 나타내는 영역이며 good 클래스를 통해 초록색 상승 스타일을 입힘 -->
+            <span class="icon" aria-hidden="true"></span>
+            <!-- aria-hidden="true"을 통해 스크린리더가 이 아이콘을 발견해도 무시하도록 -->
+            <span class="delta-icon-up" aria-hidden="true"></span>
+
+            <span class="sr-only">상승 </span>+12.4% vs 어제
+          </p>
+          <div class="spark" role="img" aria-label="수익 추이 미니 그래프"></div>
+        </article>
+
+        <article class="card" aria-label="Conversion Rate">
+          <p class="kpi-title">Conversion Rate</p>
+          <p class="kpi-value">3.28%</p>
+          <p class="kpi-delta bad">
+            <span class="icon" aria-hidden="true"></span>
+            <span class="delta-icon-down" aria-hidden="true"></span>
+            <span class="sr-only">하락 </span>-0.4pp vs 지난주
+          </p>
+          <div class="spark" role="img" aria-label="전환율 추이 미니 그래프"></div>
+        </article>
+
+        <article class="card" aria-label="Active Users">
+          <p class="kpi-title">Active Users</p>
+          <p class="kpi-value">18,442</p>
+          <p class="kpi-delta good">
+            <span class="icon" aria-hidden="true"></span>
+            <span class="delta-icon-up" aria-hidden="true"></span>
+            <span class="sr-only">상승 </span>+1,203 신규
+          </p>
+          <div class="spark" role="img" aria-label="활성 사용자 추이 미니 그래프"></div>
+        </article>
+
+        <article class="card" aria-label="Error Rate">
+          <p class="kpi-title">Error Rate</p>
+          <p class="kpi-value">0.72%</p>
+          <p class="kpi-delta bad">
+            <span class="icon" aria-hidden="true"></span>
+            <span class="delta-icon-down" aria-hidden="true"></span>
+            <span class="sr-only">악화 </span>+0.12pp 스파이크
+          </p>
+          <div class="spark" role="img" aria-label="에러율 추이 미니 그래프"></div>
+        </article>
+
+        <!-- 더 많은 카드가 inline-block으로 계속 렌더링된다고 가정 -->
+        <script>
+          // 병목 재현: 동일 카드 60개 추가
+          const area = document.currentScript.parentElement;
+          // 지금 이 스크립트 태그가 붙어있는 부모 요소를 area로 지정
+          const frag = document.createDocumentFragment();
+          // DocumentFragment를 사용하여 DOM에 한 번에 추가하여 Reflow 최소화
+          for (let i = 0; i < 60; i++) {
+            frag.appendChild(area.children[0].cloneNode(true));
+          }
+          // 반복문을 돌면서 이미 만들어져있던 첫 번째 카드 (area.children[0])를 복제(cloneNode)하여 아까 만든 임시 바구니 frag에 추가
+          area.appendChild(frag);
+        </script>
+      </section>
+
+      <section class="panel">
+        <h3 style="margin:0 0 12px">🧾 최근 주문</h3>
+        <table>
+          <thead><tr><th>주문번호</th><th>고객</th><th>금액</th><th>상태</th></tr></thead>
+          <tbody>
+            <tr><td>#10291</td><td>Kim Min</td><td>₩129,000</td><td>배송중</td></tr>
+            <tr><td>#10290</td><td>Lee Ara</td><td>₩59,000</td><td>결제완료</td></tr>
+            <tr><td>#10289</td><td>Park J</td><td>₩780,000</td><td>반품요청</td></tr>
+            <tr><td>#10288</td><td>Yun H</td><td>₩44,000</td><td>결제완료</td></tr>
+          </tbody>
+        </table>
+      </section>
+    </main>
+  </div>
+</body>
+</html>
