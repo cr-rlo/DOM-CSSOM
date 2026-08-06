@@ -211,6 +211,7 @@
             frag.appendChild(area.children[0].cloneNode(true));
           }
           // 반복문을 돌면서 이미 만들어져있던 첫 번째 카드 (area.children[0])를 복제(cloneNode)하여 아까 만든 임시 바구니 frag에 추가
+          // 이렇게 한번에 60개의 카드를 frag에 담아놓고 마지막에 한 번에 DOM에 추가하면 Reflow가 한 번만 발생
           area.appendChild(frag);
         </script>
       </section>
