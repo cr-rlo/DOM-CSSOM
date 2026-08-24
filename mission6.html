@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <title>장바구니 (느린 버전)</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    body{font-family:sans-serif;margin:0;background:#f9fafb;color:#111}
+
+    header{padding:16px;background:#fff;border-bottom:1px solid #ddd}
+
+    main{max-width:960px;margin:0 auto;padding:20px}
+
+    
+    .cart-item{display:flex;align-items:center;gap:12px;padding:12px;background:#fff;
+      border:1px solid #ddd;margin-bottom:12px;border-radius:8px}
+    .cart-item img{
+      max-width:100%; 
+      width: 200px;
+      height: 150px} /* 크기 없음 → CLS */
+    .cart-item .info{flex:1}
+    .actions{margin-top:16px;display:flex;gap:8px}
+    .btn{padding:10px 14px;border:0;border-radius:6px;cursor:pointer}
+    .btn.primary{background:#2563eb;color:#fff}
+    .btn.outline{background:#fff;border:1px solid #ccc}
+  </style>
+</head>
+<body>
+  <header>🛒 장바구니</header>
+  <main>
+    <div id="cart"></div>
+    <div class="actions">
+      <input type="text" id="coupon" placeholder="할인 코드 입력">
+      <button class="btn outline" id="btn-coupon">할인 코드 적용</button>
+      <button class="btn primary" id="btn-pay">결제하기</button>
+    </div>
+  </main>
+
+  <script>
+    const cart = document.getElementById('cart');
+    // html에서 id가 cart인 요소를 가져와서 cart 변수에 저장
+    for(let i=1;i<=50;i++){
+      // 50번 반복하여 장바구니 아이템 생성
+      const div=document.createElement('div');
+      // 새로운 html div 요소를 생성
+      div.className='cart-item';
+      // 방금 생성한 div 요소에 cart-item이라는 클래스를 추가
+      // css의 .cart-item 규칙이 적용됨
+      div.innerHTML=`
+        <img src="https://picsum.photos/200/150?random=${i}" alt="상품${i}"
+        loading="lazy"
+        decoding="async"
+        >
+        <div class="info">
+          <h4>상품 ${i}</h4>
+          <p>₩${(i*1000).toLocaleString()}</p>
+          <label>수량: <input type="number" value="1" min="1"></label>
+        </div>`;
+        // alt 속성은 이미지가 로딩되지 않을 때 대체 텍스트로 표시됨
+        // div class="info" 안에 상품 이름, 가격, 수량 입력란을 포함
+      cart.appendChild(div);
+    }
+
+    // 문제1: 할인 코드 동기 처리 → UI 멈춤
+    // 기존 코드 
+    // document.getElementById('btn-coupon').addEventListener('click',()=>{
+      //const start=performance.now();
+      // (현재 시각을 performance.now()로 측정하여 start 변수에 저장)
+      //while(performance.now()-start<500){} 
+      // (현재 시각에서 start를 뺀 값이 500ms가 될 때까지 아무것도 하지 않고 멈춤 => 500ms가 지날 때까지 아무것도 하지 않고 반복)
+     // alert('할인 코드가 적용되었습니다.');
+      // (while 루프가 끝나면 alert 창을 띄워서 할인 코드 적용 완료 메시지를 표시 })); 
+
+    // 문제 1 개선코드
+    const couponButton = document.getElementById('btn-coupon');
+    couponButton.addEventListener('click', async () => {
+      couponButton.disabled = true; // 버튼 비활성화
+      couponButton.textContent = '할인 코드 적용 중...'; // 버튼 텍스트 변경
+
+      try {
+      // try 블록 안에서 비동기 작업 수행
+      await new Promise(resolve => setTimeout(resolve,500)); // 500ms 지연
+      alert('할인 코드가 적용되었습니다.'); // 완료 메시지 표시
+
+      } catch(error){
+        console.error('할인 코드 적용 중 오류 발생:', error);
+        // 오류 발생 시 콘솔에 에러 메시지 출력
+        alert('할인 코드 적용 중 오류가 발생했습니다. 다시 시도해주세요.');
+        // 화면에 오류 메시지 표시
+
+      } finally {
+        // 성공하든 실패하든 작동되는 코드
+        couponButton.disabled = false; // 버튼 활성화
+        couponButton.textContent = '할인 코드 적용'; // 버튼 텍스트 원래대로
+
+      }
+    })
+
+
+    // 문제2: 결제 버튼도 동기 블로킹
+    const payButton = document.getElementById('btn-pay');
+    payButton.addEventListener('click', async () => {
+      // 결제 버튼 클릭 시
+      payButton.disabled = true; 
+      payButton.textContent = '결제 처리 중...';
+      // 중복 결제 방지를 위해 버튼 비활성화 및 로딩 상태로 변경
+      try{
+        // 메인 스레드를 막지 않고 백그라운드에서 결제 API 통신 시뮬레이션 (0.8초 소요)
+        await new Promise(resolve => setTimeout(resolve, 800));
+        alert('결제가 완료되었습니다!');
+
+      } catch(error){
+        console.error('결제 처리 중 오류 발생:', error);
+        alert('결제 처리 중 오류가 발생했습니다. 다시 시도해주세요.');
+
+      } finally{
+        payButton.disabled = false; 
+        payButton.textContent = '결제하기';
+        // 결제 완료 후 버튼 활성화 및 텍스트 원래대로
+
+      }
+
+    });
+
+  </script>
+</body>
+</html>

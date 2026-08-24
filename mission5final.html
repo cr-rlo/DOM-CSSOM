@@ -40,6 +40,12 @@
       .receipt{border:0; break-inside: avoid}
       .line strong{font-family:ui-monospace,Menlo,monospace}
     }
+    /* 
+    인쇄할 때만 적용되는 css
+    화면에서는 적용되지 않고 인쇄 미리보기나 실제 인쇄 시에만 적용됨
+    !important를 사용하여 다른 스타일보다 우선 적용되도록 함
+    break-inside: avoid는 페이지 나누기 시에 해당 요소가 잘리지 않도록 함
+    */
     .sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0)}
   </style>
 
@@ -112,8 +118,12 @@
         const payload={title:'예약 공유',text:'내 예약 정보',url:location.href};
         // 공유할 내용(payload)을 객체로 정의, title, text, url을 포함
         if(navigator.share){try{await navigator.share(payload)}catch{}}
-        // 
+        // navigator.share가 지원되는 브라우저에서는 공유 API를 사용하여 payload를 공유 -> 스마트폰 브라우저가 기본으로 제공하는 공유 네이티브 메뉴를 의미
+        // 공유를 취소하거나 실패해도 catch 블록에서 아무 동작을 하지 않음
         else{mTitle.textContent='공유';mBody.innerHTML=`<p>아래 링크를 복사해 공유하세요.</p><input value="${location.href}" style="width:100%">`;modal.style.display='flex'}
+        // pc 브라우저는 보통 navigator.share를 지원하지 않으므로, 모달을 띄워서 링크를 복사하도록 안내
+        // 미리 만들어둔 모달 창의 제목 mTitle을 공유, 내용 mBody를 현재 웹페이지 주소가 담긴 입력창을 집어넣음
+        // modal.style.display='flex'로 모달을 화면에 표시
       });
 
       buttons.map.addEventListener('click',()=>immediateUI(buttons.map,'지도 로딩…',async()=>{
