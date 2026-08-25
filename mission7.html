@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>[BASE] 타이밍 혼동으로 인한 UX/로그 불안정</title>
+
+  <!-- 동기 스크립트(데이터 URI). HTML 파싱을 '의도적으로' 잠깐 막아 병목 재현 
+  브라우저가 HTML을 위에서부터 아래로 파싱 하다가 이 동기 스크립트를 만나면 메인 스레드를 멈추고 80밀리초 동안 아무 것도 하지 못하게 묶어둠
+  -->
+  <script src="data:text/javascript;charset=utf-8,
+    (function(){
+      const start = performance.now();
+      while(performance.now() - start < 80){} // ~80ms busy-wait to simulate blocking
+      console.log('[BASE SDK] 동기 로딩 완료(파싱 차단 시뮬레이션)');
+    })();
+  "></script>
+
+  <script>
+    window.onload = () => {
+      console.log("🌎 load - 모든 리소스 로딩 후 실행");
+
+      // (문제) DOM 조작이 불필요하게 load까지 늦춰짐 → 초기 환영 문구가 늦게 뜸
+      document.getElementById("username").textContent = "홍길동님, 환영합니다!";
+      // 단순히 텍스트 데이터를 띄우는 작업인데 이를 모든 외부 이미지와 리소스 로딩이 끝나는 시점(load)까지 미룸
+      // 사용자는 헤더에 오랫동안 로딩 중이라는 문구를 보게 됨 -> 텍스트 DOM 조작은 뼈대가 완성된 직후 (DomCoontentLoaded)또는 HTML 파싱 즉시 처리로 다뤄야 즉각적인 반응성을 볼 수 있음
+
+      // (문제) 이미지 높이 기반 레이아웃: DOMContentLoaded에서 실행하면 0px가 나오는 케이스를 유발
+      const banner = document.getElementById("banner");
+      document.getElementById("card").style.height = banner.naturalHeight + "px";
+      // 자바스크립트로 이미지 높이를 재서 박스 높이를 만드는 방식인데 이를 DOMContentLoaded 시점에 실행하면 이미지 실제의 크기가 아직 로드되지 않아 0px이 잡힘 => load 시점에 밀어 넣었음
+      // 그러나 이러한 방식은 레이아웃 흔들림과 성능저하를 유발함
+
+      console.log("카드 높이(잘못 반영 가능):", document.getElementById("card").style.height);
+
+      // (문제) beforeunload 경고만 띄우고 저장 안 함 → 실수 시 데이터 유실
+      window.addEventListener("beforeunload", (e) => {
+        if (document.querySelector("#report").value.trim() !== "") {
+          e.preventDefault();
+          e.returnValue = "정말 나가시겠습니까?";
+        }
+      });
+
+      // (문제) fetch는 탭 종료 중단 → 종료 로그 유실
+      window.addEventListener("unload", () => {
+        // 사용자가 탭을 닫거나 다른 페이지로 넘어갈 때 벌생하는 unload 이벤트 안에서 일반 fetch요청 날리기
+        fetch("/analytics/exit", {
+          // 페이지가 이미 파괴되고 사라지는 도중이기 때문에 브라우저는 네트워크 요청을 완주시키지 못하고 강제로 끊어버림
+          method: "POST",
+          keepalive: false,
+          body: JSON.stringify({ end: Date.now() })
+        });
+      });
+    };
+  </script>
+
+  <style>
+    body { font-family: system-ui, sans-serif; margin: 24px; }
+    header { margin-bottom: 12px; }
+    #card { background: #e5e7eb; margin-top: 10px; display:flex; align-items:center; justify-content:center; }
+    textarea { width: 100%; height: 160px; margin-top: 16px; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1 id="username">로딩 중...</h1>
+  </header>
+
+  <!-- 유효한 이미지: 데이터 URI(SVG) -->
+  <img id="banner"
+       alt="배너 이미지"
+       src="data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='800' height='200'%3E%3Crect width='100%25' height='100%25' fill='%23e2e8f0'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' font-family='Arial' font-size='32' fill='%2363748b'%3EBanner%20800x200%3C/text%3E%3C/svg%3E" />
+
+  <section id="card">
+    <p>카드 콘텐츠(배너 높이에 맞춰 세로 크기를 지정해야 함)</p>
+  </section>
+
+  <textarea id="report" placeholder="여기에 보고서를 작성하세요(작성 중 이탈 시 유실 위험)"></textarea>
+</body>
+</html>

@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>스스로 문제 개선</title>
+
+  <script>
+    // 1. HTML을 다 읽고 DOM 트리를 완성하자마자 즉시 실행되는 코드
+    document.addEventListener("DOMContentLoaded", () => {
+      // 사용자 이름 표시(환영 문구)
+      document.getElementById("username").textContent = " 홍길동님, 환영합니다!";
+
+      // 초안 복원(자동 저장된 draft가 로컬 스토리지에 있다면 불러오기)
+      const savedDraft = localStorage.getItem("report_draft");
+      if(savedDraft){
+        document.getElementById("report").value = savedDraft;
+      }// report id를 가진 요소에 초안 값을 삽입하여 불러오기
+
+    });
+
+    // 2. 모든 리소스가 완전히 준비된 시점에 실행되는 코드
+    // 배너 이미지 높이 반영, beforeunload 이탈 방어 + 자동 임시 저장, unload 세션 종료 로그 전송(fetch 대신 sendBeacon 사용)
+    window.onload = () => {
+      console.log("🌎 load - 모든 리소스 로딩 후 실행");
+
+      // 배너 이미지 높이 기반 카드 레이아웃 계산
+      const banner = document.getElementById("banner");
+      const card = document.getElementById("card");
+
+      if(banner && card){
+        // 이미지가 완전히 로드된 후라서 실제 이미지 높이를 정확히 가져올 수 있음
+        card.style.height = banner.naturalHeight + "px";
+      }
+
+      // beforeunload: 경고 + 초안 자동 저장(데이터 유실 방지)
+      window.addEventListener("beforeunload", (e) => {
+        // beforeunload는 페이지가 언로드 되기 직전에 발생하는 이벤트 
+        if (document.querySelector("#report").value.trim() !== "") {
+          // 만약 report아이디를 가진 박스 안에 내용이 존재한다면
+          e.preventDefault();
+          // 브라우저가 하려던 기본 동작 막기 즉, 브라우저가 창을 닫으려는 행동을 막음
+          e.returnValue = "정말 나가시겠습니까?";
+          // 대신 경고 메세지를 띄움
+        }
+      });
+
+      // 안전한 종료 로그 전송
+      window.addEventListener("unload", () => {
+        // unload는 경고를 무시하거나 정상적으로 종료해서 페이지가 완전히 닫히거나 새로고침되는 등의 상황
+        const data = JSON.stringify({end: Date.now()})
+        // Date.now()는 현재 시간을 계산하는 역할 => 사용자가 unload한 정확한 시간을 계산해서 end 변수에 담아줌
+        // 그 시간을 자바스크립트 객체 형태를 서버가 읽을 수 있도록 JSON 문자열로 변환
+        navigator.sendBeacon("/analytics/exit", data);
+        // 앞에서 담은 data를 서버로 발송하는 역할
+        // /analytics/exit는 데이터를 받을 백엔드 서버의 주소
+        // navigator.sendBeacon함수는 브라우저가 닫혀도 포장해둔 data를 백엔드 서버의 주소로 요청하고 안전하게 종료
+    });
+    };
+    // 즉 1단계 beforeunloade 될 때 내부 로컬 스토리지에 입력 내용을 안전하게 백업하고 
+    // 2단계 unload 될 때(사용자가 완전히 사이트를 닫게 되면) 사용자가 언제 나갔는지 시간로그를 서버에 보내고 종료
+  </script>
+
+  <style>
+    body { font-family: system-ui, sans-serif; margin: 24px; }
+    header { margin-bottom: 12px; }
+    #card { background: #e5e7eb; margin-top: 10px; display:flex; align-items:center; justify-content:center; }
+    textarea { width: 100%; height: 160px; margin-top: 16px; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1 id="username">로딩 중...</h1>
+  </header>
+
+  <!-- 유효한 이미지: 데이터 URI(SVG) -->
+  <img id="banner"
+       alt="배너 이미지"
+       src="data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='800' height='200'%3E%3Crect width='100%25' height='100%25' fill='%23e2e8f0'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' font-family='Arial' font-size='32' fill='%2363748b'%3EBanner%20800x200%3C/text%3E%3C/svg%3E" />
+
+  <section id="card">
+    <p>카드 콘텐츠(배너 높이에 맞춰 세로 크기를 지정해야 함)</p>
+  </section>
+
+  <textarea id="report" placeholder="여기에 보고서를 작성하세요(작성 중 이탈 시 유실 위험)"></textarea>
+</body>
+</html>
