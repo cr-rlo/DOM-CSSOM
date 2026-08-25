@@ -5,123 +5,397 @@
   <title>장바구니 (느린 버전)</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <style>
-    body{font-family:sans-serif;margin:0;background:#f9fafb;color:#111}
+    *{box-sizing:border-box}
+    /* 모든 요소의 박스 크기 계산 방식을 border-box로 설정하여 padding과 border를 포함한 크기를 지정 => 이렇게 하지 않으면 content-box 방식으로 지정한 너비에 패딩과 테두리가 더해져서 실제 화면에는 내가 지정한 너비보다 더 큰 값으로 그려짐 */
+    body{
+      font-family:'Segoe UI', Roboto, system-ui, -apple-system, sans-serif;
+      margin:0; background:#f3f4f6; color:#111827;
+    }
 
-    header{padding:16px;background:#fff;border-bottom:1px solid #ddd}
+    @media (prefers-reduced-motion: reduce){
+    .card:hover{transform:none}
+    .btn{transition:none}
+    }
+    /* 
+    @media는 미디어 쿼리로, 화면의 크기, 다크모드 여부, 그리고 사용자의 기기 설정 등 현재 웹 페이지를 보고 있는 환경이나 조건에 따라 다른 스타일을 적용할 수 있도록 하는 기능
+    prefers-reduced-motion: reduce는 사용자가 운영체제에서 '움직임 줄이기'를 설정했는지 여부를 감지하는 미디어 기능
+    사용자가 기기 설정에서 모션 줄이기를 켰다면 .card:hover에 적용되는 transform 효과와 .btn에 적용되는 transition 효과를 제거하여 시각적 움직임을 최소화
+    */
 
-    main{max-width:960px;margin:0 auto;padding:20px}
 
-    
-    .cart-item{display:flex;align-items:center;gap:12px;padding:12px;background:#fff;
-      border:1px solid #ddd;margin-bottom:12px;border-radius:8px}
-    .cart-item img{
-      max-width:100%; 
-      width: 200px;
-      height: 150px} /* 크기 없음 → CLS */
-    .cart-item .info{flex:1}
-    .actions{margin-top:16px;display:flex;gap:8px}
-    .btn{padding:10px 14px;border:0;border-radius:6px;cursor:pointer}
-    .btn.primary{background:#2563eb;color:#fff}
-    .btn.outline{background:#fff;border:1px solid #ccc}
+    /* ========== Header ========== */
+    header{
+      background:linear-gradient(90deg,#2563eb,#1d4ed8);
+      color:#fff; padding:16px 24px; display:flex; align-items:center; justify-content:space-between;
+      position:sticky; top:0; z-index:10;
+    }
+    /* 
+    단색 배경 대신 왼쪽에서 오른쪽으로 자연스럽게 이어지는 블루계열의 그라데ㅣ션 배경을 적용
+    진한 파란색 배경 위에 흰 글씨를 배치하여 웹 접근성을 충족하는 높은 텍스트 가독성
+    위아래, 좌우로 패딩을 주어 글씨가 화면 가장자리에 붙지 않도록 함
+    display:flex로 헤더 안의 요소들을 가로로 배치하고, align-items:center로 세로 가운데 정렬, justify-content:space-between으로 좌우 끝에 배치
+    position:sticky로 스크롤 시에도 헤더가 화면 상단에 고정
+    */
+    .logo{display:flex; align-items:center; gap:10px; font-weight:700; font-size:20px}
+    /* 로고 영역을 flex로 배치하여 아이콘과 텍스트 사이에 10px 간격을 주고, 글씨를 굵게 하고 크기를 20px로 설정 */
+
+
+    /* ========== Layout: 2-Column with Sticky Aside ========== */
+    main{
+      max-width:1120px; margin:24px auto; padding:0 16px;
+      display:grid; grid-template-columns:2fr 1fr; gap:24px;
+    }
+    /* 데스크톱이나 대형 모니터 화면엥서 콘텐츠가 무한정으로 늘어나 가독성이 떨어지는 것을 방지하고 가장 보기 좋은 적정 선 까지만 넓어지도록 max-width 제한 
+    상하로는 24px의 여백을 주고 좌우 auto를 통해 웹페이지 전체를 화면 중앙에 정확히 배치
+    화면이 작아져서 1120px보다 좁아지더라도 패딩을 둬서 텍스트나 카드가 화면 끝에 붙지않도록 함
+    display:grid를 통해 가로와 세로 행렬을 동시에 제어할 수 있는 2차원 레이아웃
+    grid-template-columns:2fr 1fr;=> 전체 가로 공간을 3등분하고 왼쪽에 2의 비율 오른쪽에 1의 비율을 할당 
+    gap:24px; 왼쪽 영역과 오른쪽 영역 사이에 24px 간격을 줌
+    */
+
+   /* ========== Cart List Card ========== */
+    .card{
+      display:flex; gap:16px; align-items:center;
+      background:#fff; border:1px solid #e5e7eb; border-radius:12px; padding:16px;
+      box-shadow:0 2px 6px rgba(0,0,0,.04);
+      /* transform만 사용 → 페인트보다 저렴(가능하면 합성 단계 처리) */
+      transition:transform .15s ease;
+    }
+    /* transform을 활용하면 브라우저가 레이아웃을 다시 계산하고 다시 그리지 않아서 성능이 최적화 됨 
+    테두리 색, 모서리 둥글게, 그림자 처리 등을 조합해 깔끔한 UI 완성
+    */
+    .card:hover{ transform: translateY(-2px) }
+    .thumb{
+      
+      width:120px; height:90px; aspect-ratio:4/3;
+      border-radius:8px; object-fit:cover; flex:0 0 auto;
+    }/* 크기 예약 + cover → CLS 방지 
+      object-fit:cover로 원본 이미지의 비율이 어떻든 간에 지정한 크기에 맞게 잘라내어 담음
+      flex:0 0 auto; flex-grow:0, flex-shrink:0, flex-basis:auto로 설정하여 flex 컨테이너 안에서 이미지가 늘어나거나 줄어들지 않도록 함
+      */
+
+    .info{ flex:1; min-width:0 }
+    .info h4{ margin:0 0 6px; font-size:16px }
+    .info p{ margin:0 0 8px; color:#374151; font-weight:600 }
+    /* flex 자식 요소 안의 텍스트가 길어지면 부모 박스를 뚫고 삐져나가거나 찌그러지는 현상이 발생할 수 있는데 min-width를 명시하여 텍스트가 영역을 침범하지 않고 알아서 줄바꿈 되거나 안전하게 수축함 */
+    .qty{ font-size:14px; color:#4b5563 }
+    .qty input{
+      width:64px; padding:6px 8px; margin-left:6px;
+      border:1px solid #d1d5db; border-radius:8px; font-size:14px;
+    }
+    /* 수량 입력란은 최소한의 크기와 패딩을 주어 사용자가 편하게 입력할 수 있도록 하고, 테두리와 모서리 둥글게 처리 */
+
+
+
+    /* ========== Aside (Order Summary) ========== */
+    aside{
+      background:#fff; border:1px solid #e5e7eb; border-radius:12px; padding:20px;
+      box-shadow:0 2px 6px rgba(0,0,0,.04); height:fit-content; position:sticky; top:84px;
+      display:flex; flex-direction:column; gap:16px;
+    }
+    /* 
+    aside 영역은 주문 요약을 보여주는 카드 형태로, 흰색 배경과 테두리, 그림자 처리로 시각적으로 구분
+    height:fit-content;로 내용물의 양에 따라 높이가 알맞게 잡히도록 함
+    position:sticky; top:84px;로 스크롤 시에도 화면 상단에서 84px 아래에 고정되어 항상 보이도록 함
+    display:flex; flex-direction:column; gap:16px;로 내부 요소들을 세로로 배치하고 각 요소 사이에 16px 간격을 줌
+
+    */
+    aside h3{ margin:0; font-size:18px; font-weight:700 }
+
+    .summary{ border-top:1px solid #e5e7eb; padding-top:12px; }
+    .row{ display:flex; justify-content:space-between; margin:8px 0; color:#374151 }
+    .row strong{ color:#111827 }
+
+    .actions{ display:flex; gap:8px }
+    .actions input[type="text"]{
+      flex:1; padding:10px 12px; border:1px solid #d1d5db; border-radius:8px; font-size:14px;
+    }
+
+
+
+/* ========== Buttons ========== */
+    .btn{
+      padding:10px 14px; border:0; border-radius:10px; cursor:pointer;
+      font-weight:600; font-size:15px;
+      transition: transform .06s ease, background .2s ease, box-shadow .2s ease;
+    }
+    /* transition을 주어 색상이나 크기가 바뀔 때 뚝뚝 끊기지 않고 자연스럽게 바뀌도록 애니메이션 설정 */
+    .btn:active{ transform: translateY(1px) }
+    /* 사용자가 버튼을 누르고 있는 순간 아래로 살짝 내려앉는 효과 */
+    .btn.primary{ background:#2563eb; color:#fff }
+    .btn.primary:hover{ background:#1d4ed8 }
+    .btn.outline{ background:#fff; color:#111827; border:1px solid #d1d5db }
+    .btn.outline:hover{ background:#f3f4f6 }
+    /* primary는 결제하기와 같은 핵심 행동을 직관적으로 알려주고 outline은 보조 액션으로 자연스럽게 주력버튼과 구분되도록 */
+    .btn.loading{ opacity:.6; pointer-events:none } /* 시각적으로는 투명도를 조정해 로딩중임을 알리고 pointer-events:none을 통해서는 마우스 차단 */
+
+
+    /* ========== Misc ========== */
+    #cart-list{ display:flex; flex-direction:column; gap:16px }
+    .badge{display:inline-block; padding:2px 8px; background:#eff6ff; color:#1d4ed8; border-radius:999px; font-size:12px; margin-left:8px}
+    /* 상품 카드들이 가로가 아니라 세로 방향으로 차곡차곡 쌓이도록 만듦
+    카드와 카드 사이 여백
+    */
+
+    /* 모바일: 1열 전환, sticky 해제 */
+    @media (max-width: 900px){
+      main{ grid-template-columns:1fr; }
+      aside{ position:static; top:auto }
+    }
+    /* 화면이 900px 이하로 좁아지면 main 영역을 1열로 바꾸고 aside 영역의 sticky를 해제하여 스크롤 시에도 자연스럽게 따라오도록 함 */
+
+    /* 접근성: 스크린리더 전용 영역 */
+    .sr-only{ position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0 }
+    /* 화면을 눈으로 보는 사용자에게는 완전히 투명하고 없는 것처럼 취급되지만 스크린리더의 접근성 트리에는 고스란히 남아있어 완벽하게 읽힘*/
+
+    /* (옵션) 오프스크린 비용 절감: 초기 레이아웃 예측치 제공 */
+    @supports (content-visibility:auto){
+      .card{ content-visibility:auto; contain-intrinsic-size:150px 360px; }
+    }
+    /* content-visibility:auto;를 통해 화면에 보이지 않는 요소는 렌더링을 지연시켜 브라우저의 렌더링 비용을 절감
+    contain-intrinsic-size:150px 360px;를 통해 화면에 보이지 않더라도 해당 요소가 차지할 공간을 미리 확보하여 레이아웃이 갑자기 바뀌는 것을 방지하고 CLS를 줄임
+    @supports (content-visibility:auto){}를 통해 브라우저가 content-visibility를 지원하는 경우에만 적용되도록 함 => 구형 브라우저에서는 무시되고, 최신 브라우저에서만 적용되어 호환성 유지
+    */
+
+
   </style>
 </head>
 <body>
-  <header>🛒 장바구니</header>
-  <main>
-    <div id="cart"></div>
-    <div class="actions">
-      <input type="text" id="coupon" placeholder="할인 코드 입력">
-      <button class="btn outline" id="btn-coupon">할인 코드 적용</button>
-      <button class="btn primary" id="btn-pay">결제하기</button>
-    </div>
+  <header>
+    <div class="logo">🛒 MyShop <span class="badge">Cart</span></div>
+    <nav class="nav">고객센터 | 로그인</nav>
+  </header>
+
+ <main>
+    <!-- 왼쪽: 장바구니 리스트 -->
+    <section id="cart-list" aria-label="장바구니 항목 목록"></section>
+
+    <!-- 오른쪽: 주문 요약 -->
+    <aside aria-labelledby="order-summary-title" aria-busy="false">
+      <h3 id="order-summary-title">주문 요약</h3>
+
+      <!-- 가격 정보는 라이브 영역으로 즉시 읽어주기 -->
+      <div class="summary" aria-live="polite">
+        <div class="row"><span>상품 합계</span><span id="subtotal">₩0</span></div>
+        <div class="row"><span>할인</span><span id="discount">- ₩0</span></div>
+        <div class="row"><strong>총 결제 금액</strong><strong id="total">₩0</strong></div>
+      </div>
+      <!-- aria-live: polite를 통해 사용자가 현재 하던 작업을 방해하지 않고 숨을 고른 뒤 정중하게 바뀐 총 금액을 스크린린더가 읽음 -->
+
+
+
+      <div class="actions">
+        <input type="text" id="coupon" placeholder="할인 코드 입력 (예: SAVE10)" aria-label="할인 코드 입력">
+        <button class="btn outline" id="btn-coupon" aria-label="할인 코드 적용" aria-disabled="false">적용</button>
+      </div>
+      <button class="btn primary" id="btn-pay" aria-label="결제하기" aria-disabled="false">결제하기</button>
+
+      <!-- 비차단 상태 알림 -->
+      <div id="toast" class="sr-only" aria-live="polite"></div>
+    </aside>
   </main>
 
+
   <script>
-    const cart = document.getElementById('cart');
-    // html에서 id가 cart인 요소를 가져와서 cart 변수에 저장
-    for(let i=1;i<=50;i++){
-      // 50번 반복하여 장바구니 아이템 생성
-      const div=document.createElement('div');
-      // 새로운 html div 요소를 생성
-      div.className='cart-item';
-      // 방금 생성한 div 요소에 cart-item이라는 클래스를 추가
-      // css의 .cart-item 규칙이 적용됨
-      div.innerHTML=`
-        <img src="https://picsum.photos/200/150?random=${i}" alt="상품${i}"
-        loading="lazy"
-        decoding="async"
-        >
-        <div class="info">
-          <h4>상품 ${i}</h4>
-          <p>₩${(i*1000).toLocaleString()}</p>
-          <label>수량: <input type="number" value="1" min="1"></label>
-        </div>`;
-        // alt 속성은 이미지가 로딩되지 않을 때 대체 텍스트로 표시됨
-        // div class="info" 안에 상품 이름, 가격, 수량 입력란을 포함
-      cart.appendChild(div);
+    /* ================= Utilities ================= */
+    const fmt = new Intl.NumberFormat('ko-KR', { style:'currency', currency:'KRW', maximumFractionDigits:0 });
+    // 자바스크립트의 내장 객체인 Intl.NumberFormat을 사용하여 한국 통화 형식으로 금액을 표시하도록 설정
+    // maximumFractionDigits:0을 통해 소수점 이하를 표시하지 않도록 설정
+    const $ = (s)=>document.querySelector(s);
+    const $$ = (s)=>document.querySelectorAll(s);
+    // $와 $$를 통해 document.querySelector와 document.querySelectorAll을 간단하게 호출할 수 있는 단축 함수 정의
+   
+    // 입력 과발화 방지: 입력이 멈춘 뒤 Nms 후 실행
+    const debounce = (fn, d=120) => { let t; return (...args) => { clearTimeout(t); t = setTimeout(() => fn(...args), d); } };
+    // 사용자가 인풋박스에 숫자를 연속해서 빠르게 입력하거나 화살표를 꾹 눌러 수량을 빠르게 바꾸는 경우 매 입력마다 이벤트가 발생하여 불필요하게 총 금액 계산이 반복되는 것을 방지하기 위해 debounce 함수를 사용
+    // 마지막 입력이 끝난 후 지정된 시간 (d=120ms) 동안 추가 입력이 없을 때만 fn 함수를 실행하도록 설정
+
+
+
+    // 안전한 정수 변환 + 범위 보정(최소 1, 최대 99)
+    const safeInt = (v, {min=1, max=99}={}) => {
+      let n = parseInt(v, 10);
+      if (Number.isNaN(n)) n = min;
+      return Math.max(min, Math.min(max, n));
+    };
+    // safeInt 함수는 입력값 v를 정수로 변환하고 범위를 보정하여 최소값(min)과 최대값(max) 사이로 제한
+    // parseInt(v, 10)을 통해 문자열 v를 10진수 정수로 변환
+    // Number.isNaN(n)을 통해 변환된 값이 NaN인지 확인하고, NaN이면 최소값(min)으로 설정
+    // Math.max(min, Math.min(max, n))을 통해 n이 min보다 작으면 min으로, max보다 크면 max로 제한하여 반환
+
+    // 비차단 토스트: alert 대체. SR에 즉시 읽힘.
+    function toast(msg){
+      const t = $('#toast');
+      t.classList.remove('sr-only');
+      t.textContent = msg;
+      setTimeout(()=>{ t.classList.add('sr-only'); t.textContent=''; }, 1500);
+    }
+    // alert를 대체하여 화면에 표시되지 않는 스크린리더 전용 영역에 메시지를 표시하는 toast 함수를 정의
+    // alert는 브라우저의 메인 스레드를 강제로 멈추게 만들어서 UX 측면에서 좋지 않음
+    // toast 함수는 메세지가 나타났다가 지워지는 비차단 방식으로, 스크린리더가 즉시 읽을 수 있으며 브라우저가 멈추지 않음
+    // .sr-only 클래스를 제거하여 사용자 눈에 토스트 알림이 즉시 보이게 함
+    // 전달받은 msg를 토스트 영역에 표시하고, 1.5초 후에 다시 .sr-only 클래스를 추가하여 토스트 알림을 숨김
+
+
+
+    // 공통 로딩 상태 토글: 시각·키보드·SR 모두 반영
+    function setLoading(button, text){
+      // 대상이되는 버튼 요소와 로딩 중에 버튼 안에서 보여줄 텍스트 문구를 매개 변수로 받음
+      button.classList.add('loading');
+      // css에서 정의한 .loading 클래스를 버튼에 추가하여 시각적으로 로딩 상태를 표시
+      button.disabled = true;
+      // 버튼을 비활성화하여 사용자가 클릭할 수 없도록 함
+      button.setAttribute('aria-disabled', 'true');
+      // 스크린리더에게 버튼이 비활성화 상태임을 알리기 위해 aria-disabled 속성을 true로 설정
+      const prev = button.textContent;
+      // 로딩이 끝나면 버튼 문구를 원래대로 되돌리기 위해 현재 버튼의 텍스트를 prev 변수에 저장
+      button.textContent = text;
+      // 버튼 안의 텍스트를 로딩 중임을 나타내는 text로 변경
+      return () => {
+        button.classList.remove('loading');
+        button.disabled = false;
+        button.setAttribute('aria-disabled', 'false');
+        button.textContent = prev;
+      };
+      // 반환되는 함수는 로딩 상태를 해제하고 버튼을 원래 상태로 되돌리는 역할을 함
     }
 
-    // 문제1: 할인 코드 동기 처리 → UI 멈춤
-    // 기존 코드 
-    // document.getElementById('btn-coupon').addEventListener('click',()=>{
-      //const start=performance.now();
-      // (현재 시각을 performance.now()로 측정하여 start 변수에 저장)
-      //while(performance.now()-start<500){} 
-      // (현재 시각에서 start를 뺀 값이 500ms가 될 때까지 아무것도 하지 않고 멈춤 => 500ms가 지날 때까지 아무것도 하지 않고 반복)
-     // alert('할인 코드가 적용되었습니다.');
-      // (while 루프가 끝나면 alert 창을 띄워서 할인 코드 적용 완료 메시지를 표시 })); 
+     /* ================= Data & Nodes ================= */
+    const ITEMS_COUNT = 50;
+    // 장바구니에 표시할 상품의 총 개수를 50으로 설정
+    const cartList = $('#cart-list');
+    // 상품 카드들이 동적으로 삽입될 부모 컨테이너 요소
+    const subtotalEl = $('#subtotal');
+    // 상품 합계 금액을 표시할 요소
+    const discountEl = $('#discount');
+    // 할인 금액을 표시할 요소
+    const totalEl = $('#total');
+    // 총 결제 금액을 표시할 요소
+    const couponInput = $('#coupon');
+    // 할인 코드 입력란 요소
+    const couponBtn = $('#btn-coupon');
+    // 할인 코드 적용 버튼 요소
+    const payBtn = $('#btn-pay');
+    // 결제하기 버튼 요소
 
-    // 문제 1 개선코드
-    const couponButton = document.getElementById('btn-coupon');
-    couponButton.addEventListener('click', async () => {
-      couponButton.disabled = true; // 버튼 비활성화
-      couponButton.textContent = '할인 코드 적용 중...'; // 버튼 텍스트 변경
+    let subtotal = 0, discount = 0, appliedCoupon = null;
+    // subtotal: 상품 합계 금액, discount: 할인 금액, appliedCoupon: 적용된 할인 코드 (null이면 없음)
 
-      try {
-      // try 블록 안에서 비동기 작업 수행
-      await new Promise(resolve => setTimeout(resolve,500)); // 500ms 지연
-      alert('할인 코드가 적용되었습니다.'); // 완료 메시지 표시
+    /* ========== Render Items (lazy + 크기예약 + 응답해상도 + 캐시 고려) ========== */
+    for(let i=1;i<=ITEMS_COUNT;i++){
+      // 앞서 정의한 상품 개수만큼 반복문을 돌며 각 상품 카드 생성
+      const price = i*3000;
+      const card = document.createElement('article');
+      // 단순히 div가 아니라 article 태그를 사용하여 의미론적으로 상품 카드임을 명시
+      card.className = 'card';
+      card.innerHTML = `
+        <img class="thumb"
+        loading="lazy" decoding="async" fetchpriority="low"
+        src="https://picsum.photos/200/150"
+        srcset="https://picsum.photos/240/180 240w, https://picsum.photos/480/360 480w, https://picsum.photos/720/540 720w"
+        sizes="(max-width: 900px) 33vw, 120px"
+        width="120" height="90" alt="상품 ${i} 이미지">
+        <div class="info">
+          <h4>상품 ${i}</h4>
+          <p data-price="${price}">${fmt.format(price)}</p>
+          <label class="qty">수량:
+            <input type="number" inputmode="numeric" pattern="[0-9]*"
+                   min="1" value="1" aria-label="상품 ${i} 수량" data-price="${price}">
+          </label>
+        </div>`;
+        // data-price 속성을 통해 각 상품의 가격 정보를 HTML 요소에 저장하여 나중에 수량 변경 시 가격 계산에 활용
+        // 수량 입력란은 type="number"로 설정하여 숫자만 입력 가능하도록 하고, inputmode="numeric"과 pattern="[0-9]*"을 통해 모바일 키보드에서 숫자 키패드가 나타나도록 함
+      cartList.appendChild(card);
+    }
+    
+/* ================= Totals ================= */
+    function recalcTotals(){
+      // 수량 입력란의 값이 바뀔 때마다 총 금액을 다시 계산하는 함수
+      let sum = 0;
+      // 총 합계를 저장할 변수 sum 초기화
+      $$('#cart-list input[type="number"]').forEach(inp=>{
+        // 리스트 안에 있는 모든 수량 입력창 요소들을 배열 형태로 가져옴
+        const price = Number(inp.dataset.price||0);
+        // 앞서 인풋 태그에 숨겨두었던 data-price 값을 꺼내와 숫자로 변환
+        // 값이 없으면 안전하게 0으로 처리
+        const qty = safeInt(inp.value, {min:1, max:99});
+        // safeInt를 호출해 사용자가 수량 칸에 음수를 넣었거나 글자를 입력했거나 100개 이상의 비정상적인 값을 넣어도 안전한 정수로 자동 보정
+        sum += price * qty;
+        // 각 상품의 가격과 보정된 수량을 곱한 뒤 전체 합산 변수 sum에 누적
+      });
+      subtotal = sum;
 
-      } catch(error){
-        console.error('할인 코드 적용 중 오류 발생:', error);
-        // 오류 발생 시 콘솔에 에러 메시지 출력
-        alert('할인 코드 적용 중 오류가 발생했습니다. 다시 시도해주세요.');
-        // 화면에 오류 메시지 표시
+      // 간단 쿠폰 룰: SAVE10 → 10% (최대 50,000)
+      discount = 0;
+      if(appliedCoupon === 'SAVE10'){
+        // 현재 적용된 쿠폰이 SAVE10이라면 복합 할인 룰 적용
+        discount = Math.min(Math.round(subtotal * 0.10), 50000);
+      }// Math.round(subtotal * 0.10): 상품 합계 금액의 10%를 계산하고 소수점 반올림을 수행
+      // Math.min(..., 50000): 할인 금액이 아무리 크더라도 최대 50,000원까지만 할인되도록 상한선(Cap)을 엄격하게 제한
 
-      } finally {
-        // 성공하든 실패하든 작동되는 코드
-        couponButton.disabled = false; // 버튼 활성화
-        couponButton.textContent = '할인 코드 적용'; // 버튼 텍스트 원래대로
+    
 
+      subtotalEl.textContent = fmt.format(subtotal);
+      // 상품 합계 금액을 포맷 문자열로 변환하여 화면에 출력
+      discountEl.textContent = `- ${fmt.format(discount)}`;
+      // 전체 합계에서 할인 금액을 마이너스 기호와 함께 포맷팅하여 랜더링
+      totalEl.textContent = fmt.format(Math.max(0, subtotal - discount));
+      // 최종 금액 계산
+    }
+    recalcTotals(); // 초기 1회만 정확 계산(중복 누적 제거)
+
+
+/* ========== Quantity Change (부분 업데이트 + 디바운스) ========== */
+    const onQtyInput = debounce((e)=>{
+      // 디바운스를 적용하여 120ms동안 추가 입력이 없을 때만 아래 함수 실행
+      const el = e.target;
+      if(el.matches('input[type="number"]')){
+        // 부모 안에서 발생한 입력 이벤트 중 오직 수량 입력창에서 발생한 것만 골라내어 실행
+        el.value = safeInt(el.value, {min:1, max:99}); // 빈값·음수·과대값 보정
+        recalcTotals();                                 // 합계만 갱신 → 페인트 범위 축소
       }
-    })
+    }, 120);
+    cartList.addEventListener('input', onQtyInput);
+    // 만약 장바구니에 상품이 50개라면 input요소마다 이벤트를 붙이는 것은 시간 낭비 => 대신 부모 컨테이너인 cart-list에 단 하나의 이벤트 리스너만 장착하고 자식 요소에서 일어나는 이벤트가 부모에게 전달되는 원리를 이용해 통제
+
+    /* ========== Coupon (즉시 피드백 + 비동기 + 토스트) ========== */
+    couponBtn.addEventListener('click', ()=>{
+      if(couponBtn.disabled) return;
+      // 사용자가 할인코드 적용을 다급하게 여러 번 연타하더라도 이미 버튼이 비활성화 상태라면 함수가 곧바로 종료되어 중복 API 요청이나 에러 완벽 차단
+
+      const restore = setLoading(couponBtn, '검증 중…');
+      const code = (couponInput.value||'').trim().toUpperCase();
 
 
-    // 문제2: 결제 버튼도 동기 블로킹
-    const payButton = document.getElementById('btn-pay');
-    payButton.addEventListener('click', async () => {
-      // 결제 버튼 클릭 시
-      payButton.disabled = true; 
-      payButton.textContent = '결제 처리 중...';
-      // 중복 결제 방지를 위해 버튼 비활성화 및 로딩 상태로 변경
-      try{
-        // 메인 스레드를 막지 않고 백그라운드에서 결제 API 통신 시뮬레이션 (0.8초 소요)
-        await new Promise(resolve => setTimeout(resolve, 800));
-        alert('결제가 완료되었습니다!');
-
-      } catch(error){
-        console.error('결제 처리 중 오류 발생:', error);
-        alert('결제 처리 중 오류가 발생했습니다. 다시 시도해주세요.');
-
-      } finally{
-        payButton.disabled = false; 
-        payButton.textContent = '결제하기';
-        // 결제 완료 후 버튼 활성화 및 텍스트 원래대로
-
-      }
-
+  // 서버 대기 시뮬레이션
+      setTimeout(()=>{
+        if(code === 'SAVE10'){
+          appliedCoupon = 'SAVE10';
+          toast('10% 할인 코드 적용 (최대 50,000원)');
+        }else if(!code){
+          appliedCoupon = null;
+          toast('할인 코드가 비어 있습니다.');
+        }else{
+          appliedCoupon = null;
+          toast('유효하지 않은 할인 코드입니다.');
+        }
+        recalcTotals();
+        restore();
+      }, 300);
     });
 
+    /* ========== Pay (즉시 반응 + 비동기) ========== */
+    payBtn.addEventListener('click', ()=>{
+      if(payBtn.disabled) return;
+
+      const restore = setLoading(payBtn, '결제 처리 중…');
+      // 결제 API 대기 시뮬레이션
+      setTimeout(()=>{
+        toast('결제가 완료되었습니다!');
+        restore();
+      }, 600);
+    });
   </script>
 </body>
 </html>
+
