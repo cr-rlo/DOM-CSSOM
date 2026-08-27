@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <title>[BASE] Blocking JS 해결</title>
+
+  <!-- 광고/트래킹은 async로 독립시키기 -->
+  <script async src="./base-js/ads.js"></script>
+  <script async src="./base-js/tracking.js"></script>
+
+  <!-- main.js는 defer로 안전하게 미루기 -->
+  <script defer src="./base-js/main.js">
+    // main.js는 웹페이지의 버튼을 직접 조작해야 하므로, HTML태그가 아직 안 만들어졌을 때 실행되면 에러가 남 => defer는 HTML생성이 끝날 때까지 기다림
+  </script>
+
+</head>
+<body>
+  <h1>JS Blocking 실험</h1>
+  <p>버튼 클릭 시 반응 속도를 확인해보세요</p>
+  <button id="cta">지금 시작</button>
+
+  
+
+  <script>
+    document.addEventListener("DOMContentLoaded", () => {
+      console.log("🚀 DOMContentLoaded (BASE)");
+    });
+    window.addEventListener("load", () => {
+      console.log("🌎 load (BASE)");
+    });
+
+
+// 실행 순서: 1. 광고/ 트래킹은 다운로드가 끝나는 즉시 async 실행
+// 2. main.js는 DOM 파싱 완료 후 defer 실행
+// 3. 그 후 → DOMContentLoaded 시점이 앞당겨지고, UI 반응도 개선
+  </script>
+</body>
+</html>
