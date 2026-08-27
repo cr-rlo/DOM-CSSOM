@@ -4,21 +4,89 @@
   <meta charset="utf-8" />
   <title>[BASE] Critical CSS 미분리</title>
 
-  <!-- 문제: CSS 파일 4개가 모두 동기적으로 로드됨 (렌더 차단) -->
-  <link rel="stylesheet" href="/css/reset.css">
-  <link rel="stylesheet" href="/css/fonts.css">
-  <link rel="stylesheet" href="/css/layout.css">
-  <link rel="stylesheet" href="/css/theme.css">
+  <!-- 첫 화면(hero section)에 당장 필요한 핵심 스타일 인라인 삽입 
+   외부 파일을 불러오는 것이 아니라 브라우저가 HTML 파일을 읽는 즉시 적용할 스타일을 따로 분리하여 작성 -->
+  <style> 
+  /* 1. 기본 레이아웃 및 FOUC(깜빡임) 방지 */
+    html,body{
+      height:100%;
+      margin: 0;
+      padding:0;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+      /* 아직 폰트 파일이 다운되지 않았어도 기본 내장 폰트를 빌려써 글자가 깨지거나 깜빡이지 않고 곧바로 뜨도록 설정 */
+    }
 
-  <style>
-    html,body{height:100%}
+    .hero{
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100%;
+      background-color: #f8f9fa; 
+      text-align: center;
+      padding: 20px;
+    }
+
+    .title{
+      font-size: 2.5rem;
+      font-weight: bold;
+      color: #212529;
+      margin-bottom: 12px;
+    }
+
+    .subtitle {
+      font-size: 1.2rem;
+      color: #6c757d;
+      margin-bottom: 24px;
+    }
+
+    .cta {
+      background-color: #007bff;
+      color: #ffffff;
+      font-size: 1rem;
+      font-weight: bold;
+      padding: 12px 24px;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+    }
   </style>
+
+  
+  <!-- media="print"와 onload 트릭을 이용한 css 지연 로딩 -->
+  <link rel="stylesheet" href="/css/reset.css" media="print" onload="this.media='all'">
+  <link rel="stylesheet" href="/css/fonts.css" media="print" onload="this.media='all'">
+  <link rel="stylesheet" href="/css/layout.css" media="print" onload="this.media='all'">
+  <link rel="stylesheet" href="/css/theme.css" media="print" onload="this.media='all'">
+  <!-- 
+  media="print"
+   => 브라우저는 웹페이지를 그릴 때 media="print"라고 적혀있는 css 파일은 인쇄할 때 쓰는 스타일이라는 의미이므로 화면을 그릴 때 당장 필요하지 않음으로 인식하고 렌더링 차단 대상에서 제외시킴
+   덕분에 브라우저는 이 파일이 다운되기를 기다리지 않고 즉시 첫 화면을 그림
+   -->
+  <!--
+   onload="this.media='all'"
+   => 브라우저가 첫 화면을 그리는 동안 백그라운드에서는 CSS파일들이 다운로드 되고 있음
+   다운로드가 끝나는 순간(onload), 자바스크립트가 작동하여 이 파일의 미디어 조건을 all(모든 기기/화면)으로 바꿈
+   결과적으로 첫 화면 렌더링은 전혀 방해받지 않고 빠르게 뜨면서, 다운로드가 끝난 뒤에는 스타일이 자연스럽게 전체 적용됨
+   -->
+
+  <!-- 자바스크립트를 지원하지 않는 구형 브라우저를 위한 안전장치 -->
+  <noscript>
+    <link rel="stylesheet" href="/css/reset.css">
+    <link rel="stylesheet" href="/css/fonts.css">
+    <link rel="stylesheet" href="/css/layout.css">
+    <link rel="stylesheet" href="/css/theme.css">
+  </noscript>
+
 </head>
+
+
+
 <body>
-  <section class="hero">
-    <h1 class="title">빠른 첫 화면이 UX를 살립니다</h1>
-    <p class="subtitle">렌더링을 막는 CSS를 정리해보세요</p>
-    <button class="cta">지금 시작</button>
+  <section class="hero"> <!-- 배경화면 -->
+    <h1 class="title">빠른 첫 화면이 UX를 살립니다</h1> <!-- 큰 제목 -->
+    <p class="subtitle">렌더링을 막는 CSS를 정리해보세요</p> <!-- 부제목 -->
+    <button class="cta">지금 시작</button> <!-- 버튼 -->
   </section>
 </body>
 </html>
