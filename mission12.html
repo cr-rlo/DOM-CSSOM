@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>[BASE] 느린 신상품 피드</title>
+  <style>
+    body{margin:0;font-family:sans-serif}
+    header{position:sticky;top:0;background:#fff;padding:12px 16px;border-bottom:1px solid #ddd}
+    .list{max-width:1000px;margin:0 auto;padding:12px 16px}
+    .item{display:flex;align-items:center;gap:12px;padding:12px 8px;border-bottom:1px solid #eee}
+    .item img{width:72px;height:72px;object-fit:cover;border-radius:8px}
+    .title{font-weight:600}
+  </style>
+</head>
+<body>
+<header>신상품 피드 (모두 렌더링)</header>
+<main class="list" id="list"></main>
+<script>
+  const data = Array.from({length:10000},(_,i)=>({
+    id:i+1, title:`상품 #${i+1}`,
+    img:`https://picsum.photos/seed/${i+1}/128/128`,
+    price:(Math.random()*90000+10000|0).toLocaleString('ko-KR')
+  }));
+  // Array.from()은 배열을 만들어주는 자바스크립트 내장 함수
+  // )()안에는 첫 번째로 배열의 길이를 지정하는 객체, 두 번째로는 배열의 각 요소를 만들어주는 콜백함수가 들어간다.
+  // (_, i) => ({ ... }) : 배열의 각 요소를 만들어주는 콜백함수
+  // 이 함수 안에는 두 개의 매개변수가 들어가는데, 첫 번째 매개변수는 배열의 각 요소의 값(사용하지 않으므로 _로 표기), 두 번째 매개변수는 배열의 각 요소의 인덱스(i)이다.
+  const list = document.getElementById('list');
+  // id=list인 HTML 요소를 가져와서 list라는 변수에 저장
+  for(const p of data){
+    // 아까 만들어둔 data 배열 안에 있는 각 상품 객체를 하나씩 꺼내서 p라는 변수에 저장
+    list.innerHTML += `
+      <div class="item">
+        <img src="${p.img}" alt="${p.title}">
+        <div>
+          <div class="title">${p.title}</div>
+          <div>₩${p.price}</div>
+        </div>
+      </div>`;
+      // list 상자 안에 HTML 코드를 추가하는데, += 연산자를 사용하면 기존 내용에 이어서 추가됨
+      // ${p.img}, ${p.title}, ${p.price}는 각각 상품 객체 p의 img, title, price 속성값을 가져와서 HTML 코드 안에 넣어주는 템플릿 리터럴 문법
+  }
+</script>
+</body>
+</html>
