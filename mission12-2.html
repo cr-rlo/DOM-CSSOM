@@ -3,36 +3,95 @@
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1"/>
-  <title>[BASE] 느린 신상품 피드</title>
+  <title>신상품 피드 개선</title>
   <style>
-    body{margin:0;font-family:sans-serif}
-    header{position:sticky;top:0;background:#fff;padding:12px 16px;border-bottom:1px solid #ddd}
+    body{ margin:0; font-family:sans-serif; }
+    header{ position:sticky; top:0; background:#fff; padding:12px 16px; border-bottom:1px solid #ddd}
+    #veiwport{
+      height: 400px;
+      overflow-y: auto;
+      position: relative;
+      border: 2px solid #ddd;
+    }
+    #itemContainer{
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      /* 왼쪽과 오른쪽에 붙도록해서 상자가 바깥상자의 가로폭에 맞춰 자동으로 늘어남 
+      top:0은 시작점을 고정하는 것 */
+    }
+
+
     .list{max-width:1000px;margin:0 auto;padding:12px 16px}
     .item{display:flex;align-items:center;gap:12px;padding:12px 8px;border-bottom:1px solid #eee}
     .item img{width:72px;height:72px;object-fit:cover;border-radius:8px}
     .title{font-weight:600}
+
+
   </style>
 </head>
 <body>
-<header>신상품 피드 (모두 렌더링)</header>
-<main class="list" id="list"></main>
+<header>신상품 피드</header>
+<div id="viewport">
+  <div id="itemContainer"></div>
+</div>
 <script>
   const data = Array.from({length:10000},(_,i)=>({
     id:i+1, title:`상품 #${i+1}`,
     img:`https://picsum.photos/seed/${i+1}/128/128`,
     price:(Math.random()*90000+10000|0).toLocaleString('ko-KR')
   }));
-  const list = document.getElementById('list');
-  for(const p of data){
-    list.innerHTML += `
-      <div class="item">
+
+  const itemContainer = document.getElementById('itemContainer');
+  const viewport = document.getElementById('viewport');
+
+  const ITEM_HEIGHT = 72; // 각 아이템의 높이
+  // CSS에서 .item에 준 height:72px와 동일하게 맞춰야 함
+
+  itemContainer.style.height = `${data.length * ITEM_HEIGHT}px`;
+  // itemContainer의 높이를 전체 아이템 수 * 각 아이템 높이로 설정
+
+  const VISIBLE_COUNT = 15;
+  // 한 번에 보여줄 아이템 수
+
+  function render(){
+    // 화면을 다시 그려주는 렌더링 함수
+    const scrollTop = viewport.scrollTop;
+    // 지금 사용자가 스크롤을 위에서부터 몇 픽셀이나 내렸는지 확인
+    const startIndex = Math.floor(scrollTop / ITEM_HEIGHT);
+    // 현재 스크롤 위치를 기준으로 몇 번째 상품부터 보여줘야 할지 계산 => (스크롤 내린 거리 / 아이템 높이 = 현재 맨 위에 있는 상품 번호)
+    const endIndex = Math.min(startIndex + VISIBLE_COUNT, data.length);
+    // 화면에 끝나는 번호 계산 => (시작 번호 + 보여줄 아이템 수)와 전체 아이템 수 중 작은 값 선택
+    // 데이터 전체 개수를 넘어가지 않도록 Math.min() 사용
+
+    const visibleData = data.slice(startIndex, endIndex);
+    // 현재 눈에 보이는 범위의 데이터만 잘라서 가져오기
+
+    itemContainer.innerHTML = visibleData.map(p => `
+      <div class="item" style="height: ${ITEM_HEIGHT}px">
         <img src="${p.img}" alt="${p.title}">
         <div>
           <div class="title">${p.title}</div>
           <div>₩${p.price}</div>
         </div>
-      </div>`;
+      </div>
+    `).join('');
+    // 잘라낸 데이터로 HTML을 만들어서 itemContainer에 넣기
+
+    itemContainer.style.transform = `translateY(${startIndex * ITEM_HEIGHT}px)`;
+    // 안쪽 상자를 현재 스크롤 위치에 맞춰서 떠오르게 하기
+    // 시작 상품 번호 * 각 아이템 높이 만큼 상자를 통쨰로 아래로 이동
+
   }
+
+    viewport.addEventListener('scroll', render);
+    // 스크롤을 움직일 때마다 render함수 호출 실시간 실행
+
+    render();
+    // 초기 화면 렌더링
+
+
 </script>
 </body>
 </html>
