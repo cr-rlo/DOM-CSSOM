@@ -52,53 +52,121 @@
 </section>
 
 <script>
-  const ROW_H=92,PAGE=500,MAX=5,vm=document.getElementById('viewport'),area=document.getElementById('scroll-area'),sent=document.getElementById('sentinel');
+  const ROW_H=92,
+  // 상품 한 줄의 높이가 92 픽셀
+  PAGE=500,MAX=5,
+  // 한 번에 서버에서 가져올 상품 개수를 500개로 제한, 최대 5페이지까지 가져오도록 제한
+  vm=document.getElementById('viewport'),
+  // 스크롤이 일어나는 제한된 창문
+  area=document.getElementById('scroll-area'),
+  // 실제 상품들이 들어가는 가상 리스트
+  sent=document.getElementById('sentinel');
+  // 맨 아래에 숨어 있다가, 사용자가 스크롤을 내려서 이 1픽셀짜리 막대기가 눈에 보이는 순간 "어? 끝에 도달했네! 다음 페이지 데이터를 서버에서 가져와!" 하고 무한 스크롤을 실행시키는 방화벽 역할
+
   let items=[],page=0,loading=false;
+  // items: 실제 상품 데이터가 들어가는 배열, page: 현재 몇 번째 페이지까지 가져왔는지 기록, loading: 서버에서 데이터를 가져오는 중인지 여부를 기록 => 중복 요청 방지용
 
   async function loadPage(){
+    // 서버에서 데이터를 가져오는 함수
     if(loading||page>=MAX)return;loading=true;
+    // 사용자가 스크롤을 내려서 loadPage()가 여러 번 호출되더라도, loading이 true이면 서버 요청을 중복으로 보내지 않도록 막음
+    // page가 MAX 이상이면 더 이상 서버 요청을 보내지 않도록 막음
+    // loading=true; : 서버 요청을 보내기 시작했으므로, loading을 true로 바꿔서 중복 요청 방지
     await new Promise(r=>setTimeout(r,200));
+    // 서버에서 데이터를 가져오는 데 걸리는 시간(200ms)을 흉내 내기 위해 setTimeout으로 200ms 지연
     const start=page*PAGE;
+    // start: 현재 페이지에서 가져올 상품의 시작 인덱스
+    // PAGE=500이므로, page=0이면 start=0, page=1이면 start=500, page=2이면 start=1000, ... 이런 식으로 새로 가져올 상품의 시작 인덱스를 계산
     const chunk=Array.from({length:PAGE},(_,i)=>({id:start+i+1,title:`상품 #${start+i+1}`,img:`https://picsum.photos/seed/${start+i+1}/128/128`,price:(Math.random()*90000+10000|0).toLocaleString('ko-KR')}));
+    // chunk: 서버에서 가져온 상품 데이터 500개를 담은 배열
+    // Array.from({length:PAGE},(_,i)=>({...})) : 길이가 PAGE인 배열을 만들고, 각 요소를 상품 객체로 채움
+    // id: 상품 고유 번호, title: 상품 이름, img: 상품 이미지 URL, price: 상품 가격(10,000~100,000원 사이의 랜덤 값)
     items=items.concat(chunk);page++;
-    area.style.height=(items.length*ROW_H)+'px';render();loading=false;
+    // items 배열에 새로 가져온 chunk를 이어 붙이고, page를 1 증가시켜서 다음 페이지를 준비
+    area.style.height=(items.length*ROW_H)+'px';render();
+    // area의 높이를 items.length*ROW_H로 설정하여, 가상 리스트의 전체 높이를 맞춤, 전체 상품 개수에 상품 한 줄 높이를 곱해서 가상 리스트의 높이를 계산
+    loading=false;
+    // 서버 요청이 끝났으므로 loading을 false로 바꿔서 다음 요청을 받을 준비
   }
 
   function render(){
+    // 화면을 다시 그려주는 렌더링 함수
     const top=vm.scrollTop,vh=vm.clientHeight;
+    // top: 현재 스크롤 위치(위에서부터 얼마나 내렸는지)를 vm(뷰포트)에서 가져옴, vh: 뷰포트 높이(보이는 영역의 높이)를 vm에서 가져옴
     const start=Math.max(0,Math.floor(top/ROW_H)-5),end=Math.min(start+Math.ceil(vh/ROW_H)+10,items.length);
+    // start: 현재 스크롤 위치를 기준으로 몇 번째 상품부터 보여줘야 할지 계산 => (스크롤 내린 거리 / 아이템 높이 = 현재 맨 위에 있는 상품 번호) - 5(위쪽 여유분)
+    // top/ROW_H: 현재 스크롤 위치를 상품 한 줄 높이로 나누어, 현재 맨 위에 있는 걸쳐있는 상품 번호를 구함
+    // 여기에 여유분으로 5를 빼서, 화면 위쪽에 5개의 상품을 더 보여주도록 함 => 스크롤을 빨리 내리더라도 위쪽에 상품이 미리 렌더링되어 있어, 스크롤이 끊기지 않고 부드럽게 보이도록 함
+    // end: 화면에 끝나는 번호 계산 => (시작 번호 + 보여줄 아이템 수)와 전체 아이템 수 중 작은 값 선택
+    // start+Math.ceil(vh/ROW_H)+10: 화면에 보이는 상품 수 + 여유분 10개
     area.innerHTML='';
+    // 이전애 화면에 보였던 상품들을 모두 지우고, 새로 렌더링할 상품들만 화면에 표시하기 위해 기존 화면을 싹 지움
     for(let i=start;i<end;i++){
+      // 1만개 상품 중에서, 현재 화면에 보여야 하는 상품 범위(start~end)만큼 반복
       const p=items[i];
-      const row=document.createElement('div');row.className='row';row.style.top=(i*ROW_H)+'px';
+      // items 배열에서 현재 인덱스(i)에 해당하는 상품 객체를 p에 저장
+      const row=document.createElement('div');row.className='row';
+      row.style.top=(i*ROW_H)+'px';
+      // row: 메모리 공간에 아직 화면에 붙지 않은 빈 div 태그를 만들어서 className을 'row'로 지정, row의 top 위치를 i*ROW_H로 설정하여, 가상 리스트 안에서 각 상품이 차지할 위치를 계산  => 실제 dom순서와 상관없이 무조건 i번째 상품은 i*ROW_H 위치에 붙도록 강제
       row.innerHTML=`<img class="thumb" width="72" height="72" alt="${p.title}" data-src="${p.img}">
       <div style="flex:1"><div class="title">${p.title}</div><div>₩${p.price}</div></div>
       <div class="actions"><button>담기</button></div>`;
       area.appendChild(row);
-    }
+    }// 방금 생성한 row 안에 실제 상픔 정보(썸네일, 제목, 가격, 담기 버튼)등을 담은 HTML 코드를 넣고, area(가상 리스트)에 붙임
+    // 이때 이미지 태그는 data-src 속성에 실제 이미지 URL을 넣고, src 속성은 비워둠 => IntersectionObserver를 이용해 화면에 보여질 때만 실제 이미지를 불러오도록 함
     observeImgs();
+    // 반목문이 모두 끝나고 화면에 필요한 상품들이 렌더링된 후, observeImgs() 함수를 호출하여 화면에 보여지는 이미지들에 대해 IntersectionObserver를 설정
   }
 
   const imgIO=new IntersectionObserver(es=>{
+    // IntersectionObserver는 브라우저가 지원하는 객체로 특정 요소가 화면에 들어오는지 감지할 수 있음
+    // 이를 이용해, 화면에 보여지는 이미지들에 대해 실제 이미지를 불러오도록 설정
     es.forEach(e=>{
+      // es: IntersectionObserver가 감지한 요소들의 배열, e: 각 요소
       if(e.isIntersecting){
-        const img=e.target;img.src=img.dataset.src;img.onload=()=>img.classList.add('loaded');imgIO.unobserve(img);
+        // e.isIntersecting: 해당 요소가 화면에 들어왔는지 여부를 나타내는 속성
+        const img=e.target;
+        img.src=img.dataset.src;
+        img.onload=()=>img.classList.add('loaded');imgIO.unobserve(img);
+        // 화면에 들어온 이미지 태그(e.target)를 img에 저장, img.dataset.src: data-src 속성에 있는 실제 이미지 URL을 가져옴
+        // img.src=img.dataset.src;: 실제 이미지 URL을 src 속성에 넣어 이미지를 불러옴
+        // img.onload=()=>img.classList.add('loaded');: 이미지가 완전히 로드되면, loaded 클래스를 추가하여 CSS로 만들어둔 페이드인 효과를 적용
+        // imgIO.unobserve(img);: 이미 화면에 들어온 이미지는 더 이상 감지할 필요가 없으므로, IntersectionObserver에서 해당 이미지를 제거
       }
     });
   },{root:vm,rootMargin:'200px 0px'});
+  // root:vm: IntersectionObserver의 기준을 vm(뷰포트)으로 설정, rootMargin:'200px 0px': 화면에 들어오기 200픽셀 전부터 미리 감지하도록 설정
+
   function observeImgs(){area.querySelectorAll('img[data-src]').forEach(i=>imgIO.observe(i));}
+  // area(가상 리스트) 안에 있는 data-src 속성이 있는 모든 이미지 태그를 찾아서, 아까 만들어둔 경비원 객체에 감시하도록 설정
 
   vm.addEventListener('scroll',render,{passive:true});
+  // 사용자가 스크롤을 내릴 때마다 render()함수를 호출하여 화면을 다시 그리도록 설정, {passive:true}: 스크롤 이벤트를 처리하는 동안 브라우저가 스크롤을 막지 않도록 설정하여 성능 향상
+  // passive:true는 addEventListener의 옵션으로, 스크롤 이벤트를 처리하는 동안 브라우저가 스크롤을 막지 않도록 설정하여 성능 향상
   const loadIO=new IntersectionObserver(es=>{es.forEach(e=>{if(e.isIntersecting)loadPage();});},{root:vm,rootMargin:'800px 0px'});loadIO.observe(sent);
+  // loadIO: 사용자가 스크롤을 내려서 sent(1픽셀짜리 방화벽)이 화면에 들어오면 loadPage()를 호출하여 서버에서 다음 페이지 데이터를 가져오도록 설정, root:vm: IntersectionObserver의 기준을 vm(뷰포트)으로 설정, rootMargin:'800px 0px': 화면에 들어오기 800픽셀 전부터 미리 감지하도록 설정
 
   const promo=document.getElementById('promo');
-  const vidIO=new IntersectionObserver(es=>{es.forEach(e=>{if(e.isIntersecting){promo.querySelectorAll('source[data-src]').forEach(s=>{s.src=s.dataset.src;s.removeAttribute('data-src');});promo.load();vidIO.unobserve(promo);}});},{root:null,rootMargin:'400px 0px'});vidIO.observe(promo);
+  // HTML에 있던 video 태그를 가져와서 promo라는 변수에 저장
+  const vidIO=new IntersectionObserver(es=>{es.forEach(e=>{if(e.isIntersecting){promo.querySelectorAll('source[data-src]').forEach(s=>{s.src=s.dataset.src;s.removeAttribute('data-src');});promo.load();vidIO.unobserve(promo);}});},{root:null,rootMargin:'400px 0px'});
+  // vidIO: 사용자가 스크롤을 내려서 promo(video 태그)가 화면에 들어오면, promo 안에 있는 source 태그들의 data-src 속성을 src 속성으로 옮기고, promo.load()를 호출하여 비디오를 로드하도록 설정, root:null: IntersectionObserver의 기준을 브라우저 뷰포트로 설정, rootMargin:'400px 0px': 화면에 들어오기 400픽셀 전부터 미리 감지하도록 설정
+  // 비디오 전용 IntersectionObserver를 따로 만들어서, promo(video 태그)가 화면에 들어오면 비디오를 로드하도록 설정
+  vidIO.observe(promo);
+  // promo(video 태그)를 vidIO(IntersectionObserver)에 감시하도록 설정
+
 
   const ad=document.getElementById('ad'),ana=document.getElementById('ana');
-  const scriptIO=new IntersectionObserver(es=>{es.forEach(e=>{if(e.isIntersecting){ad.textContent='광고 로드 완료';ana.textContent='분석 스크립트 실행';scriptIO.disconnect();}});},{root:null,rootMargin:'200px 0px'});
-  scriptIO.observe(ad);scriptIO.observe(ana);
+  // HTML 하단에 있던 광고와 분석 스크립트 준비중 박스를 가져와서 ad, ana라는 변수에 저장
+  const scriptIO=new IntersectionObserver(es=>{es.forEach(e=>{if(e.isIntersecting){ad.textContent='광고 로드 완료';
+  // 사용자가 스크롤을 내려서 ad(광고 준비중 박스)가 화면에 들어오면, ad.textContent를 '광고 로드 완료'로 바꾸고, ana.textContent를 '분석 스크립트 실행'으로 바꿈
+  ana.textContent='분석 스크립트 실행';scriptIO.disconnect();}});},{root:null,rootMargin:'200px 0px'});
+  // scriptIO: 사용자가 스크롤을 내려서 ad(광고 준비중 박스)와 ana(분석 준비중 박스)가 화면에 들어오면, 광고와 분석 스크립트를 실행하도록 설정, root:null: IntersectionObserver의 기준을 브라우저 뷰포트로 설정, rootMargin:'200px 0px': 화면에 들어오기 200픽셀 전부터 미리 감지하도록 설정
+  scriptIO.observe(ad);
+  scriptIO.observe(ana);
+  // ad와 ana를 scriptIO(IntersectionObserver)에 감시하도록 설정
 
   loadPage();
+  // 초기 페이지 로드 시, 첫 번째 페이지 데이터를 서버에서 가져오도록 loadPage() 호출
 </script>
 </body>
 </html>
